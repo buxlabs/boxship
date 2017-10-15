@@ -8,7 +8,7 @@ module.exports = function deploy (options, Strategy) {
     domain: options.domain,
     location: options.location,
     verbose: options.verbose,
-    logger: { log: chalk.green },
+    logger: { log: console.log, format: chalk.green },
     exec: shell.exec
   })
 
