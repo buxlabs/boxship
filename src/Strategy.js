@@ -11,12 +11,12 @@ class Strategy {
   }
 
   deploy() {
-    this.log('deploy: start')
-    this.log('stage: clean')
+    this.log('deploy:start')
+    this.log('stage:clean')
     this.clean()
-    this.log('stage: copy')
+    this.log('stage:copy')
     this.copy()
-    this.log('stage: restart')
+    this.log('stage:restart')
     this.restart()
     this.log('deploy:stop')
   }
