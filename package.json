@@ -1,0 +1,35 @@
+{
+  "name": "@buxlabs/deploy",
+  "version": "1.0.0",
+  "description": "Deployment scripts",
+  "main": "src/deploy.js",
+  "scripts": {
+    "test": "ava \"src/**/*.spec.js\"",
+    "coverage": "nyc npm test"
+  },
+  "bin": "./bin/deploy.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/buxlabs/deploy.git"
+  },
+  "keywords": [
+    "deployment",
+    "kit"
+  ],
+  "author": "Emil Ajdyna <emil@ajdyna.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/buxlabs/deploy/issues"
+  },
+  "homepage": "https://github.com/buxlabs/deploy#readme",
+  "dependencies": {
+    "chalk": "^2.1.0",
+    "minimist": "^1.2.0",
+    "shelljs": "^0.7.8"
+  },
+  "devDependencies": {
+    "ava": "^0.22.0",
+    "nyc": "^11.2.1",
+    "sinon": "^4.0.1"
+  }
+}
