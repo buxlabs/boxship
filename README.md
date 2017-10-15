@@ -1,0 +1,2 @@
+# deploy
+Skrypty do wdrożeń
