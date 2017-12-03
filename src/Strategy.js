@@ -5,9 +5,11 @@ class Strategy {
     this.host = options.host
     this.domain = options.domain
     this.location = options.location
-    this.verbose = options.verbose
     this.logger = options.logger
     this.exec = options.exec
+    this.verbose = options.verbose
+    this.silent = !options.verbose
+    this.source = options.source || 'build/*'
   }
 
   deploy() {
