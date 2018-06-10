@@ -9,7 +9,7 @@ class MyDevilNetStrategy extends Strategy {
     this.exec(`scp -r ${this.source} ${this.username}@${this.host}:${this.location}`, { silent: this.silent });
   }
   install() {
-    this.ssh('npm install --production --silent')
+    this.ssh(`cd ${this.location} && npm install --production --silent`)
   }
   restart() {
     this.ssh(`devil www restart ${this.domain}`)
