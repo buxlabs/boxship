@@ -18,6 +18,8 @@ class Strategy {
     this.clean()
     this.log('stage:copy')
     this.copy()
+    this.log('stage:install')
+    this.install()
     this.log('stage:restart')
     this.restart()
     this.log('deploy:stop')
@@ -29,6 +31,7 @@ class Strategy {
 
   clean() {}
   copy() {}
+  install() {}
   restart() {}
 }
 
