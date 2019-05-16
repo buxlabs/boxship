@@ -6,9 +6,9 @@ class MyDevilNetStrategy extends Strategy {
   }
   copy() {
     this.ssh(`mkdir -p ${this.location}`)
-    const cmd = []
-    if (this.exclude) cmd.push(`GLOBIGNORE='${this.exclude}'`)
-    cmd.push(`scp -r ${this.source} ${this.username}@${this.host}:${this.location}`)
+    const cmd = ['rsync -av']
+    if (this.exclude) cmd.push(`--exclude='${this.exclude}'`)
+    cmd.push(`${this.source} ${this.username}@${this.host}:${this.location}`)
     this.exec(cmd.join(" "), { silent: this.silent });
   }
   install() {
