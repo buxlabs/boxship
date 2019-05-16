@@ -1,5 +1,4 @@
 class Strategy {
-
   constructor(options) {
     this.username = options.username
     this.host = options.host
@@ -9,7 +8,8 @@ class Strategy {
     this.exec = options.exec
     this.verbose = options.verbose
     this.silent = !options.verbose
-    this.source = options.source || 'build/*'
+    this.source = options.source || '*'
+    this.exclude = options.exclude
   }
 
   deploy() {

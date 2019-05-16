@@ -6,7 +6,10 @@ class MyDevilNetStrategy extends Strategy {
   }
   copy() {
     this.ssh(`mkdir -p ${this.location}`)
-    this.exec(`scp -r ${this.source} ${this.username}@${this.host}:${this.location}`, { silent: this.silent });
+    const cmd = []
+    if (this.exclude) cmd.push(`GLOBIGNORE='${this.exclude}'`)
+    cmd.push(`scp -r ${this.source} ${this.username}@${this.host}:${this.location}`)
+    this.exec(cmd.join(" "), { silent: this.silent });
   }
   install() {
     this.ssh(`cd ${this.location} && npm install --production --silent`)
