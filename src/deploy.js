@@ -9,6 +9,7 @@ module.exports = function deploy (options, Strategy) {
     location: options.location,
     verbose: options.verbose,
     source: options.source,
+    exclude: options.exclude,
     logger: { log: console.log, format: chalk.green },
     exec: shell.exec
   })
