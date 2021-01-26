@@ -3,4 +3,5 @@ const strategies = require('.')
 
 test('it exposes strategies', t => {
   t.truthy(strategies.MyDevilNet)
+  t.truthy(strategies.MyDevilNetStatic)
 })
