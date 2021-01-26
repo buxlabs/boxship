@@ -42,6 +42,19 @@ test('it can exclude dirs when copying', t => {
   t.truthy(spy.calledWith(`rsync -av --exclude='node_modules' * user@s1.mydevil.net:~/domains/buxlabs.pl/public_nodejs`))
 })
 
+test('it installs packages via npm', t => {
+  let spy = sinon.spy()
+  let subject = new MyDevilNetStrategy({
+    username: 'user',
+    host: 's1.mydevil.net',
+    domain: 'buxlabs.pl',
+    location: '~/domains/buxlabs.pl/public_nodejs',
+    exec: spy
+  })
+  subject.install()
+  t.truthy(spy.calledWith(`ssh -l user s1.mydevil.net 'cd ~/domains/buxlabs.pl/public_nodejs && npm install --production --silent'`))
+})
+
 test('it restarts server via a ssh exec command', t => {
   let spy = sinon.spy()
   let subject = new MyDevilNetStrategy({
