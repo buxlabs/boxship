@@ -1,6 +1,6 @@
-import test from 'ava'
-import sinon from 'sinon'
-import MyDevilNetStrategy from './MyDevilNet'
+const test = require('ava')
+const sinon = require('sinon')
+const MyDevilNetStrategy = require('./MyDevilNet')
 
 test('it cleans files via a ssh exec command', t => {
   let spy = sinon.spy()

@@ -1,6 +1,6 @@
-import test from 'ava'
-import deploy from './deploy'
-import Strategy from './Strategy'
+const test = require('ava')
+const deploy = require('./deploy')
+const Strategy = require('./Strategy')
 
 test('it deploys using given strategy', t => {
   let copied = false

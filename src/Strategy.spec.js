@@ -1,5 +1,5 @@
-import test from 'ava'
-import Strategy from './Strategy'
+const test = require('ava')
+const Strategy = require('./Strategy')
 
 test('it deploys', t => {
 
