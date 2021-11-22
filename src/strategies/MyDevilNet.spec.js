@@ -25,7 +25,7 @@ test('it copies files via a scp exec command', t => {
     exec: spy
   })
   subject.copy()
-  t.truthy(spy.calledWith(`rsync -av * user@s1.mydevil.net:~/domains/buxlabs.pl/public_nodejs`))
+  t.truthy(spy.calledWith(`rsync -avz -e ssh * user@s1.mydevil.net:~/domains/buxlabs.pl/public_nodejs`))
 })
 
 test('it can exclude dirs when copying', t => {
@@ -39,7 +39,7 @@ test('it can exclude dirs when copying', t => {
     exec: spy
   })
   subject.copy()
-  t.truthy(spy.calledWith(`rsync -av --exclude='node_modules' * user@s1.mydevil.net:~/domains/buxlabs.pl/public_nodejs`))
+  t.truthy(spy.calledWith(`rsync -avz -e ssh --exclude='node_modules' * user@s1.mydevil.net:~/domains/buxlabs.pl/public_nodejs`))
 })
 
 test('it installs packages via npm', t => {
