@@ -28,7 +28,7 @@ test('it copies files via a scp exec command', t => {
   t.truthy(spy.calledWith(`rsync -avz -e ssh * user@s1.mydevil.net:~/domains/buxlabs.pl/public_nodejs`))
 })
 
-test('it can exclude dirs when copying', t => {
+test('it can exclude a single dir when copying', t => {
   let spy = sinon.spy()
   let subject = new MyDevilNetStrategy({
     username: 'user',
@@ -40,6 +40,20 @@ test('it can exclude dirs when copying', t => {
   })
   subject.copy()
   t.truthy(spy.calledWith(`rsync -avz -e ssh --exclude='node_modules' * user@s1.mydevil.net:~/domains/buxlabs.pl/public_nodejs`))
+})
+
+test('it can exclude multiple dirs when copying', t => {
+  let spy = sinon.spy()
+  let subject = new MyDevilNetStrategy({
+    username: 'user',
+    host: 's1.mydevil.net',
+    domain: 'buxlabs.pl',
+    location: '~/domains/buxlabs.pl/public_nodejs',
+    exclude: 'node_modules,test',
+    exec: spy
+  })
+  subject.copy()
+  t.truthy(spy.calledWith(`rsync -avz -e ssh --exclude={'node_modules','test'} * user@s1.mydevil.net:~/domains/buxlabs.pl/public_nodejs`))
 })
 
 test('it installs packages via npm', t => {
