@@ -6,7 +6,7 @@ class MyDevilNetStrategy extends Strategy {
   }
   copy() {
     this.ssh(`mkdir -p ${this.location}`)
-    const cmd = ['rsync -av']
+    const cmd = ['rsync -avz -e ssh']
     if (this.exclude) cmd.push(`--exclude='${this.exclude}'`)
     cmd.push(`${this.source} ${this.username}@${this.host}:${this.location}`)
     this.exec(cmd.join(" "), { silent: this.silent });
