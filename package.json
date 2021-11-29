@@ -23,7 +23,7 @@
   },
   "homepage": "https://github.com/buxlabs/deploy#readme",
   "dependencies": {
-    "chalk": "4.1.2",
+    "chalk": "^5.0.0",
     "minimist": "1.2.5",
     "shelljs": "0.8.4"
   },
