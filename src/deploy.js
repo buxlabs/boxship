@@ -1,5 +1,4 @@
 const shell = require('shelljs')
-const chalk = require('chalk')
 
 module.exports = function deploy (options, Strategy) {
   let strategy = new Strategy({
@@ -10,7 +9,7 @@ module.exports = function deploy (options, Strategy) {
     verbose: options.verbose,
     source: options.source,
     exclude: options.exclude,
-    logger: { log: console.log, format: chalk.green },
+    logger: { log: console.log },
     exec: shell.exec
   })
 

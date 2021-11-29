@@ -26,7 +26,7 @@ class Strategy {
   }
 
   log(message) {
-    if (this.verbose) { this.logger.log(this.logger.format(message)) }
+    if (this.verbose) { this.logger.log(message) }
   }
 
   clean() {}

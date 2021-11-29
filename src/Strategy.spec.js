@@ -16,14 +16,3 @@ test('it deploys', t => {
   t.truthy(copied)
   t.truthy(restarted)
 })
-
-test('it logs formatted messages', t => {
-  let logged = false
-  let formatted = false
-  let logger = { log() { logged = true }, format() { formatted = true } }
-  class Subject extends Strategy {}
-  let subject = new Subject({ logger, verbose: true })
-  subject.deploy()
-  t.truthy(logged)
-  t.truthy(formatted)
-})
