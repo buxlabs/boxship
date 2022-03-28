@@ -23,12 +23,12 @@
   },
   "homepage": "https://github.com/buxlabs/deploy#readme",
   "dependencies": {
-    "minimist": "1.2.5",
+    "minimist": "^1.2.6",
     "shelljs": "^0.8.5"
   },
   "devDependencies": {
-    "ava": "^4.0.1",
+    "ava": "^4.1.0",
     "nyc": "15.1.0",
-    "sinon": "12.0.1"
+    "sinon": "^13.0.1"
   }
 }
