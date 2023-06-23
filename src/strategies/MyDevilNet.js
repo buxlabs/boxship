@@ -24,7 +24,7 @@ class MyDevilNetStrategy extends Strategy {
   }
   install() {
     this.ssh(
-      `cd ${this.location} && ${this.npm} install --omit=dev --silent --no-optional`
+      `cd ${this.location} && ${this.npm} install --production --omit=dev --silent --no-optional`
     )
   }
   restart() {

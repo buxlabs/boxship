@@ -84,7 +84,7 @@ test("it installs packages via npm", (t) => {
   subject.install()
   t.truthy(
     spy.calledWith(
-      `ssh -l user s1.mydevil.net 'cd ~/domains/buxlabs.pl/public_nodejs && npm install --omit=dev --silent --no-optional'`
+      `ssh -l user s1.mydevil.net 'cd ~/domains/buxlabs.pl/public_nodejs && npm install --production --omit=dev --silent --no-optional'`
     )
   )
 })
