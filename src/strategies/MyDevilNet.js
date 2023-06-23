@@ -1,9 +1,9 @@
-const Strategy = require('../Strategy')
+const Strategy = require("../Strategy")
 
-function normalizeExclude (exclude) {
-  if (exclude.includes(',')) {
-    const parts = exclude.split(',')
-    const text = `{${parts.map(part => `'${part}'`).join(',')}}`
+function normalizeExclude(exclude) {
+  if (exclude.includes(",")) {
+    const parts = exclude.split(",")
+    const text = `{${parts.map((part) => `'${part}'`).join(",")}}`
     return text
   }
   return `'${exclude}'`
@@ -15,21 +15,25 @@ class MyDevilNetStrategy extends Strategy {
   }
   copy() {
     this.ssh(`mkdir -p ${this.location}`)
-    const cmd = ['rsync -avz -e ssh']
+    const cmd = ["rsync -avz -e ssh"]
     if (this.exclude) {
       cmd.push(`--exclude=${normalizeExclude(this.exclude)}`)
     }
     cmd.push(`${this.source} ${this.username}@${this.host}:${this.location}`)
-    this.exec(cmd.join(" "), { silent: this.silent });
+    this.exec(cmd.join(" "), { silent: this.silent })
   }
   install() {
-    this.ssh(`cd ${this.location} && npm install --production --silent`)
+    this.ssh(
+      `cd ${this.location} && ${this.npm} install --omit=dev --silent --no-optional`
+    )
   }
   restart() {
     this.ssh(`devil www restart ${this.domain}`)
   }
   ssh(command) {
-    this.exec(`ssh -l ${this.username} ${this.host} '${command}'`, { silent: this.silent });
+    this.exec(`ssh -l ${this.username} ${this.host} '${command}'`, {
+      silent: this.silent,
+    })
   }
 }
 

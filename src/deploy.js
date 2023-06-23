@@ -1,6 +1,6 @@
-const shell = require('shelljs')
+const shell = require("shelljs")
 
-module.exports = function deploy (options, Strategy) {
+module.exports = function deploy(options, Strategy) {
   let strategy = new Strategy({
     username: options.username,
     host: options.host,
@@ -9,8 +9,9 @@ module.exports = function deploy (options, Strategy) {
     verbose: options.verbose,
     source: options.source,
     exclude: options.exclude,
+    npm: options.npm,
     logger: { log: console.log },
-    exec: shell.exec
+    exec: shell.exec,
   })
 
   strategy.deploy()

@@ -8,25 +8,28 @@ class Strategy {
     this.exec = options.exec
     this.verbose = options.verbose
     this.silent = !options.verbose
-    this.source = options.source || '*'
+    this.source = options.source || "*"
     this.exclude = options.exclude
+    this.npm = options.npm || "npm"
   }
 
   deploy() {
-    this.log('deploy:start')
-    this.log('stage:clean')
+    this.log("deploy:start")
+    this.log("stage:clean")
     this.clean()
-    this.log('stage:copy')
+    this.log("stage:copy")
     this.copy()
-    this.log('stage:install')
+    this.log("stage:install")
     this.install()
-    this.log('stage:restart')
+    this.log("stage:restart")
     this.restart()
-    this.log('deploy:stop')
+    this.log("deploy:stop")
   }
 
   log(message) {
-    if (this.verbose) { this.logger.log(message) }
+    if (this.verbose) {
+      this.logger.log(message)
+    }
   }
 
   clean() {}
