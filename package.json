@@ -1,6 +1,6 @@
 {
   "name": "@buxlabs/deploy",
-  "version": "1.3.2",
+  "version": "1.4.0",
   "description": "Deployment scripts",
   "main": "src/deploy.js",
   "scripts": {
