@@ -1,3 +1,4 @@
-const MyDevilNet = require('./MyDevilNet')
+const Static = require("./Static")
+const MyDevilNet = require("./MyDevilNet")
 
-module.exports = { MyDevilNet }
+module.exports = { Static, MyDevilNet }

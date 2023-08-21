@@ -10,19 +10,34 @@ class Strategy {
     this.silent = !options.verbose
     this.source = options.source || "*"
     this.exclude = options.exclude
+    this.port = options.port
     this.npm = options.npm || "npm"
+    this.stages = {
+      clean: true,
+      copy: true,
+      install: false,
+      restart: false,
+    }
   }
 
   deploy() {
     this.log("deploy:start")
-    this.log("stage:clean")
-    this.clean()
-    this.log("stage:copy")
-    this.copy()
-    this.log("stage:install")
-    this.install()
-    this.log("stage:restart")
-    this.restart()
+    if (this.stages.clean) {
+      this.log("stage:clean")
+      this.clean()
+    }
+    if (this.stages.copy) {
+      this.log("stage:copy")
+      this.copy()
+    }
+    if (this.stages.install) {
+      this.log("stage:install")
+      this.install()
+    }
+    if (this.stages.restart) {
+      this.log("stage:restart")
+      this.restart()
+    }
     this.log("deploy:stop")
   }
 

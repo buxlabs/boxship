@@ -9,12 +9,7 @@ function normalizeExclude(exclude) {
   return `'${exclude}'`
 }
 
-class MyDevilNetStrategy extends Strategy {
-  constructor() {
-    super()
-    this.stages.install = true
-    this.stages.restart = true
-  }
+class StaticStrategy extends Strategy {
   clean() {
     this.ssh(`rm -rf ${this.location}/*`)
   }
@@ -27,19 +22,16 @@ class MyDevilNetStrategy extends Strategy {
     cmd.push(`${this.source} ${this.username}@${this.host}:${this.location}`)
     this.exec(cmd.join(" "), { silent: this.silent })
   }
-  install() {
-    this.ssh(
-      `cd ${this.location} && ${this.npm} install --production --omit=dev --silent --no-optional`
-    )
-  }
-  restart() {
-    this.ssh(`devil www restart ${this.domain}`)
-  }
   ssh(command) {
-    this.exec(`ssh -l ${this.username} ${this.host} '${command}'`, {
-      silent: this.silent,
-    })
+    this.exec(
+      this.port
+        ? `ssh -l ${this.username} -p ${this.port} ${this.host} '${command}'`
+        : `ssh -l ${this.username} ${this.host} '${command}'`,
+      {
+        silent: this.silent,
+      }
+    )
   }
 }
 
-module.exports = MyDevilNetStrategy
+module.exports = StaticStrategy
