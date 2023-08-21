@@ -9,6 +9,7 @@ module.exports = function deploy(options, Strategy) {
     verbose: options.verbose,
     source: options.source,
     exclude: options.exclude,
+    port: options.port,
     npm: options.npm,
     logger: { log: console.log },
     exec: shell.exec,
