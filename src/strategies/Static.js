@@ -15,7 +15,9 @@ class StaticStrategy extends Strategy {
   }
   copy() {
     this.ssh(`mkdir -p ${this.location}`)
-    const cmd = ["rsync -avz -e ssh"]
+    const cmd = this.port
+      ? [`rsync -avz -e 'ssh -p ${this.port}'`]
+      : ["rsync -avz -e ssh"]
     if (this.exclude) {
       cmd.push(`--exclude=${normalizeExclude(this.exclude)}`)
     }
