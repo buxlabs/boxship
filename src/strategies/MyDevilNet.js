@@ -10,8 +10,8 @@ function normalizeExclude(exclude) {
 }
 
 class MyDevilNetStrategy extends Strategy {
-  constructor() {
-    super()
+  constructor(options) {
+    super(options)
     this.stages.install = true
     this.stages.restart = true
   }
