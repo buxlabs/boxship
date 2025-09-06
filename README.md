@@ -1,34 +1,76 @@
-# deploy
-Skrypty do wdrożeń
+# Boxship
 
-## Jak to działa?
+**Boxship** is a flexible deployment tool for Node.js and static web applications. It provides a simple CLI for automating deployments to various hosting environments, including static file servers and MyDevilNet hosting.
 
-Pakiet deploy jest udostępniony przez menadżer pakietów `npm` pod nazwą `@buxlabs/deploy`. Pakiet można zainstalować za pomocą komendy:
+## Features
+
+- Easy deployment via CLI
+- Supports multiple deployment strategies
+- Automates file copying, cleanup, and server restarts
+- Integrates with npm scripts
+- Verbose logging for troubleshooting
+
+## Quick Start
+
+Install Boxship as a development dependency:
 
 ```bash
-npm install @buxlabs/deploy --save-dev
+npm install boxship --save-dev
 ```
 
-Pakiet udostępnia skrypt o nazwie `deploy`, który jest dostępny do użycia w sekcji `scripts` pliku `package.json`, na przykład:
+Add a deploy script to your `package.json`:
+
+```json
+"scripts": {
+    "predeploy": "npm run build:production",
+	"deploy": "boxship --username=someuser --host=s1.mydevil.net --domain=example.com --location=~/domains/example.com/public_nodejs --strategy=MyDevilNet --verbose"
+}
+```
+
+Run the deployment:
 
 ```bash
-"deploy": "npm run build:production && deploy --username=someuser --host=s1.mydevil.net --domain=buxlabs.pl --location=~/domains/buxlabs.pl/public_nodejs --strategy=MyDevilNet --verbose"
+npm run deploy
 ```
 
-Użycie skryptu deploy wymaga podania strategii danego wdrożenia `--stragegy`. Określa ona kroki jakie zostaną wykonane w celu wdrożenia nowej wersji aplikacji.
+## Usage
 
-## Jakie są dostępne strategie?
+Boxship is used via the command line. The most common options are:
+
+```bash
+boxship --username=<user> --host=<host> --domain=<domain> --location=<path> --strategy=<strategy> [options]
+```
+
+### CLI Options
+
+- `--username` – SSH username for the remote server
+- `--host` – Hostname or IP address of the server
+- `--domain` – Domain name for deployment
+- `--location` – Target directory on the server
+- `--strategy` – Deployment strategy (`Static` or `MyDevilNet`)
+- `--verbose` – Enable verbose logging
+- `--help` – Show help message
+
+## Deployment Strategies
 
 ### Static
 
-Strategia dla statycznych hostingów udostępniających pliki z publicznego katalogu. Strategia ta polega na przekopiowaniu plików do wybranego folderu.
+For static hosting environments that serve files from a public directory. This strategy copies your build output to the specified folder.
 
 ### MyDevilNet
 
-Strategia dla hostingu MyDevilNet polega na usunięciu starych plików, przekopiowaniu nowych i zrestartowaniu serwera przy pomocy wbudowanej komendy oferowanej przez usługodawcę. Hosting wersji NodeJS opiera się na konwencji nazewnictwa plików i ich lokalizacji, co pozwala na obsługę aplikacji przy pomocy Passenger zainstalowanego przez usługodawcę.
+For MyDevilNet hosting, this strategy removes old files, uploads new ones, and restarts the server using the provider's built-in commands. Node.js hosting is managed via Passenger and relies on file naming/location conventions.
 
-W celu zalogowania się manualnie na serwer należy odpalić:
+To log in to the server manually:
 
+```bash
+ssh -l <user> <server_number>.mydevil.net
 ```
-ssh -l <user> <numer_server>.mydevil.net
-```
+
+## Contributing
+
+Contributions are welcome! Please open issues or submit pull requests for new features, bug fixes, or documentation improvements.
+
+## License
+
+MIT
