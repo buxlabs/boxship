@@ -1,8 +1,9 @@
-const test = require("ava");
+const test = require("node:test");
+const assert = require("node:assert");
 const deploy = require("./deploy");
 const Strategy = require("./Strategy");
 
-test("it deploys using given strategy", (t) => {
+test("it deploys using given strategy", () => {
   let copied = false;
   class Subject extends Strategy {
     copy() {
@@ -10,5 +11,5 @@ test("it deploys using given strategy", (t) => {
     }
   }
   deploy({}, Subject);
-  t.truthy(copied);
+  assert(copied);
 });

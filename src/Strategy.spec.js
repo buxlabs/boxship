@@ -1,19 +1,20 @@
-const test = require("ava")
-const Strategy = require("./Strategy")
+const test = require("node:test");
+const assert = require("node:assert");
+const Strategy = require("./Strategy");
 
-test("it deploys", (t) => {
-  let cleaned = false
-  let copied = false
+test("it deploys", () => {
+  let cleaned = false;
+  let copied = false;
   class Subject extends Strategy {
     clean() {
-      cleaned = true
+      cleaned = true;
     }
     copy() {
-      copied = true
+      copied = true;
     }
   }
-  let subject = new Subject({})
-  subject.deploy()
-  t.truthy(cleaned)
-  t.truthy(copied)
-})
+  let subject = new Subject({});
+  subject.deploy();
+  assert(cleaned);
+  assert(copied);
+});
