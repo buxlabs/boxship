@@ -8,6 +8,8 @@ const { CONFIG_FILENAME } = require("./boxship")
 
 const BIN = path.join(__dirname, "..", "bin", "boxship.js")
 
+const DEFAULT_EXCLUDE_FLAGS = `--exclude='.git' --exclude='.env' --exclude='.vscode' --exclude='.idea' --exclude='.DS_Store' --exclude='node_modules' --exclude='test' --exclude='coverage' --exclude='boxship.config.json'`
+
 function run(args, config) {
   const cwd = fs.mkdtempSync(path.join(os.tmpdir(), "boxship-cli-"))
   if (config !== undefined) {
@@ -25,7 +27,7 @@ const config = {
       host: "s1.mydevil.net",
       domain: "example.com",
       location: "~/domains/example.com/public_nodejs",
-      exclude: ["node_modules", "test"],
+      exclude: ["uploads"],
     },
     staging: {
       strategy: "Static",
@@ -61,7 +63,7 @@ test("it prints the deployment commands in dry-run mode", () => {
   assert.strictEqual(result.status, 0)
   assert.deepStrictEqual(result.stdout.trim().split("\n"), [
     `ssh -l user s1.mydevil.net 'mkdir -p ~/domains/example.com/public_nodejs'`,
-    `rsync -avz --delete -e ssh --exclude='node_modules' --exclude='test' ./ user@s1.mydevil.net:~/domains/example.com/public_nodejs`,
+    `rsync -avz --delete -e ssh ${DEFAULT_EXCLUDE_FLAGS} --exclude='uploads' ./ user@s1.mydevil.net:~/domains/example.com/public_nodejs`,
     `ssh -l user s1.mydevil.net 'cd ~/domains/example.com/public_nodejs && npm install --production --omit=dev --silent --no-optional'`,
     `ssh -l user s1.mydevil.net 'devil www restart example.com'`,
   ])
@@ -72,7 +74,7 @@ test("it prints each command once in verbose dry-run mode", () => {
   assert.strictEqual(result.status, 0)
   assert.deepStrictEqual(result.stdout.trim().split("\n"), [
     `ssh -l user -p 2222 staging.example.com 'mkdir -p ~/public'`,
-    `rsync -avz --delete -e 'ssh -p 2222' ./ user@staging.example.com:~/public`,
+    `rsync -avz --delete -e 'ssh -p 2222' ${DEFAULT_EXCLUDE_FLAGS} ./ user@staging.example.com:~/public`,
   ])
 })
 

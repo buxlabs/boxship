@@ -31,7 +31,7 @@ Create a `boxship.config.json` in your project root:
       "host": "s1.mydevil.net",
       "domain": "example.com",
       "location": "~/domains/example.com/public_nodejs",
-      "exclude": ["node_modules"]
+      "exclude": ["uploads"]
     },
     "staging": {
       "strategy": "Static",
@@ -82,10 +82,18 @@ The target name can be omitted when the config defines exactly one target.
 - `domain` – Domain name for deployment (required for `MyDevilNet`)
 - `port` – SSH port (`Static` only)
 - `source` – Local directory to sync, with a trailing slash (defaults to `./`)
-- `exclude` – Directories to skip, as an array or comma-separated string; excluded directories are neither uploaded nor deleted, so server-side data like `uploads` survives deploys
+- `exclude` – Additional paths to skip, as an array or comma-separated string; excluded paths are neither uploaded nor deleted, so server-side data like `uploads` survives deploys
 - `npm` – npm binary to use for installs (defaults to `npm`)
 
-Deploys are incremental: files are synced with `rsync --delete`, so only changed files are transferred and files removed locally are removed from the server. Note that when deploying from a project root (the default `./` source), directories like `.git` should be listed in `exclude`.
+Deploys are incremental: files are synced with `rsync --delete`, so only changed files are transferred and files removed locally are removed from the server.
+
+### Default Excludes
+
+These paths are always excluded, in addition to anything in `exclude`:
+
+`.git`, `.env`, `.vscode`, `.idea`, `.DS_Store`, `node_modules`, `test`, `coverage`, `boxship.config.json`
+
+Excludes match exact names, so `.env` stays local (and the server's copy is preserved) while `.env.example` still gets deployed.
 
 ## Deployment Strategies
 
@@ -95,7 +103,7 @@ For static hosting environments that serve files from a public directory. This s
 
 ### MyDevilNet
 
-For MyDevilNet hosting, this strategy syncs the files, installs production dependencies, and restarts the server using the provider's built-in commands. Add `node_modules` to `exclude` to keep the server-side install between deploys. Node.js hosting is managed via Passenger and relies on file naming/location conventions.
+For MyDevilNet hosting, this strategy syncs the files, installs production dependencies, and restarts the server using the provider's built-in commands. Since `node_modules` is excluded by default, the server-side install is kept between deploys. Node.js hosting is managed via Passenger and relies on file naming/location conventions.
 
 To log in to the server manually:
 

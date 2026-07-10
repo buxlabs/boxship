@@ -9,10 +9,23 @@ const REQUIRED = {
   MyDevilNet: ["username", "host", "location", "domain"],
 }
 
-const excludes = (exclude) =>
-  (Array.isArray(exclude) ? exclude : exclude ? exclude.split(",") : []).map(
-    (dir) => `--exclude='${dir.trim()}'`
-  )
+const DEFAULT_EXCLUDES = [
+  ".git",
+  ".env",
+  ".vscode",
+  ".idea",
+  ".DS_Store",
+  "node_modules",
+  "test",
+  "coverage",
+  CONFIG_FILENAME,
+]
+
+const excludes = (exclude) => {
+  const custom = Array.isArray(exclude) ? exclude : exclude ? exclude.split(",") : []
+  const dirs = new Set([...DEFAULT_EXCLUDES, ...custom.map((dir) => dir.trim())])
+  return [...dirs].map((dir) => `--exclude='${dir}'`)
+}
 
 const ssh = (target, command) =>
   `ssh -l ${target.username}${target.port ? ` -p ${target.port}` : ""} ${target.host} '${command}'`

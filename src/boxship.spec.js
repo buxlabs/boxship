@@ -5,6 +5,8 @@ const os = require("os")
 const path = require("path")
 const { CONFIG_FILENAME, strategies, load } = require("./boxship")
 
+const DEFAULT_EXCLUDE_FLAGS = `--exclude='.git' --exclude='.env' --exclude='.vscode' --exclude='.idea' --exclude='.DS_Store' --exclude='node_modules' --exclude='test' --exclude='coverage' --exclude='boxship.config.json'`
+
 test("Static returns mkdir and rsync commands", () => {
   const commands = strategies.Static({
     username: "user",
@@ -13,7 +15,7 @@ test("Static returns mkdir and rsync commands", () => {
   })
   assert.deepStrictEqual(commands, [
     `ssh -l user example.com 'mkdir -p ~/public'`,
-    `rsync -avz --delete -e ssh ./ user@example.com:~/public`,
+    `rsync -avz --delete -e ssh ${DEFAULT_EXCLUDE_FLAGS} ./ user@example.com:~/public`,
   ])
 })
 
@@ -26,7 +28,7 @@ test("Static uses a custom port when given", () => {
   })
   assert.deepStrictEqual(commands, [
     `ssh -l user -p 2222 example.com 'mkdir -p ~/public'`,
-    `rsync -avz --delete -e 'ssh -p 2222' ./ user@example.com:~/public`,
+    `rsync -avz --delete -e 'ssh -p 2222' ${DEFAULT_EXCLUDE_FLAGS} ./ user@example.com:~/public`,
   ])
 })
 
@@ -39,46 +41,59 @@ test("Static uses a custom source when given", () => {
   })
   assert.strictEqual(
     commands[1],
-    `rsync -avz --delete -e ssh dist/ user@example.com:~/public`
+    `rsync -avz --delete -e ssh ${DEFAULT_EXCLUDE_FLAGS} dist/ user@example.com:~/public`
   )
 })
 
-test("Static excludes a single dir when copying", () => {
+test("Static appends a custom exclude to the defaults", () => {
   const commands = strategies.Static({
     username: "user",
     host: "example.com",
     location: "~/public",
-    exclude: "node_modules",
+    exclude: "uploads",
   })
   assert.strictEqual(
     commands[1],
-    `rsync -avz --delete -e ssh --exclude='node_modules' ./ user@example.com:~/public`
+    `rsync -avz --delete -e ssh ${DEFAULT_EXCLUDE_FLAGS} --exclude='uploads' ./ user@example.com:~/public`
   )
 })
 
-test("Static excludes multiple dirs given as a string", () => {
+test("Static appends multiple excludes given as a string", () => {
   const commands = strategies.Static({
     username: "user",
     host: "example.com",
     location: "~/public",
-    exclude: "node_modules,test",
+    exclude: "uploads,tmp",
   })
   assert.strictEqual(
     commands[1],
-    `rsync -avz --delete -e ssh --exclude='node_modules' --exclude='test' ./ user@example.com:~/public`
+    `rsync -avz --delete -e ssh ${DEFAULT_EXCLUDE_FLAGS} --exclude='uploads' --exclude='tmp' ./ user@example.com:~/public`
   )
 })
 
-test("Static excludes multiple dirs given as an array", () => {
+test("Static appends multiple excludes given as an array", () => {
   const commands = strategies.Static({
     username: "user",
     host: "example.com",
     location: "~/public",
-    exclude: ["node_modules", "test"],
+    exclude: ["uploads", "tmp"],
   })
   assert.strictEqual(
     commands[1],
-    `rsync -avz --delete -e ssh --exclude='node_modules' --exclude='test' ./ user@example.com:~/public`
+    `rsync -avz --delete -e ssh ${DEFAULT_EXCLUDE_FLAGS} --exclude='uploads' --exclude='tmp' ./ user@example.com:~/public`
+  )
+})
+
+test("Static does not duplicate excludes already in the defaults", () => {
+  const commands = strategies.Static({
+    username: "user",
+    host: "example.com",
+    location: "~/public",
+    exclude: ["node_modules", "uploads"],
+  })
+  assert.strictEqual(
+    commands[1],
+    `rsync -avz --delete -e ssh ${DEFAULT_EXCLUDE_FLAGS} --exclude='uploads' ./ user@example.com:~/public`
   )
 })
 
@@ -91,7 +106,7 @@ test("MyDevilNet returns mkdir, rsync, install and restart commands", () => {
   })
   assert.deepStrictEqual(commands, [
     `ssh -l user s1.mydevil.net 'mkdir -p ~/domains/buxlabs.pl/public_nodejs'`,
-    `rsync -avz --delete -e ssh ./ user@s1.mydevil.net:~/domains/buxlabs.pl/public_nodejs`,
+    `rsync -avz --delete -e ssh ${DEFAULT_EXCLUDE_FLAGS} ./ user@s1.mydevil.net:~/domains/buxlabs.pl/public_nodejs`,
     `ssh -l user s1.mydevil.net 'cd ~/domains/buxlabs.pl/public_nodejs && npm install --production --omit=dev --silent --no-optional'`,
     `ssh -l user s1.mydevil.net 'devil www restart buxlabs.pl'`,
   ])
