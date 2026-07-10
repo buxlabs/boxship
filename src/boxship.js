@@ -43,6 +43,12 @@ const copy = (target) =>
     `${target.source || "./"} ${target.username}@${target.host}:${target.location}`,
   ].join(" ")
 
+const ensureEnv = (target) => {
+  const seed = `scp ${target.port ? `-P ${target.port} ` : ""}.env.example ${target.username}@${target.host}:${target.location}/.env`
+  const message = `seeded ${target.location}/.env from .env.example - fill in real values on the server and redeploy`
+  return `${ssh(target, `test -f ${target.location}/.env`)} || (${seed} && echo "${message}" >&2; exit 1)`
+}
+
 const strategies = {
   Static: (target) => [
     ssh(target, `mkdir -p ${target.location}`),
@@ -50,6 +56,7 @@ const strategies = {
   ],
   MyDevilNet: (target) => [
     ssh(target, `mkdir -p ${target.location}`),
+    ensureEnv(target),
     copy(target),
     ssh(
       target,

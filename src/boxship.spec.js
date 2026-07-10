@@ -97,7 +97,7 @@ test("Static does not duplicate excludes already in the defaults", () => {
   )
 })
 
-test("MyDevilNet returns mkdir, rsync, install and restart commands", () => {
+test("MyDevilNet returns mkdir, env check, rsync, install and restart commands", () => {
   const commands = strategies.MyDevilNet({
     username: "user",
     host: "s1.mydevil.net",
@@ -106,10 +106,31 @@ test("MyDevilNet returns mkdir, rsync, install and restart commands", () => {
   })
   assert.deepStrictEqual(commands, [
     `ssh -l user s1.mydevil.net 'mkdir -p ~/domains/buxlabs.pl/public_nodejs'`,
+    `ssh -l user s1.mydevil.net 'test -f ~/domains/buxlabs.pl/public_nodejs/.env' || (scp .env.example user@s1.mydevil.net:~/domains/buxlabs.pl/public_nodejs/.env && echo "seeded ~/domains/buxlabs.pl/public_nodejs/.env from .env.example - fill in real values on the server and redeploy" >&2; exit 1)`,
     `rsync -avz --delete -e ssh ${DEFAULT_EXCLUDE_FLAGS} ./ user@s1.mydevil.net:~/domains/buxlabs.pl/public_nodejs`,
     `ssh -l user s1.mydevil.net 'cd ~/domains/buxlabs.pl/public_nodejs && npm install --production --omit=dev --silent --no-optional'`,
     `ssh -l user s1.mydevil.net 'devil www restart buxlabs.pl'`,
   ])
+})
+
+test("the env check seeds .env from .env.example and fails, then passes once .env exists", (t) => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "boxship-env-"))
+  fs.writeFileSync(path.join(dir, ".env.example"), "KEY=value\n")
+  const commands = strategies.MyDevilNet({
+    username: "user",
+    host: "example.com",
+    domain: "example.com",
+    location: dir,
+  })
+  const check = commands[1]
+    .replaceAll("ssh -l user example.com ", "sh -c ")
+    .replaceAll("scp .env.example user@example.com:", "cp .env.example ")
+  const cwd = process.cwd()
+  process.chdir(dir)
+  t.after(() => process.chdir(cwd))
+  assert.throws(() => run(check), /seeded .* from \.env\.example/)
+  assert.strictEqual(fs.readFileSync(path.join(dir, ".env"), "utf8"), "KEY=value\n")
+  assert.doesNotThrow(() => run(check))
 })
 
 test("MyDevilNet uses a custom npm binary when given", () => {
@@ -120,7 +141,7 @@ test("MyDevilNet uses a custom npm binary when given", () => {
     location: "~/domains/buxlabs.pl/public_nodejs",
     npm: "npm22",
   })
-  assert.match(commands[2], /npm22 install/)
+  assert.match(commands[3], /npm22 install/)
 })
 
 function createConfigDir(content) {

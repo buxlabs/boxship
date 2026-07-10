@@ -105,7 +105,9 @@ For static hosting environments that serve files from a public directory. This s
 
 ### MyDevilNet
 
-For MyDevilNet hosting, this strategy syncs the files, installs production dependencies, and restarts the server using the provider's built-in commands. Since `node_modules` is excluded by default, the server-side install is kept between deploys. Node.js hosting is managed via Passenger and relies on file naming/location conventions.
+For MyDevilNet hosting, this strategy verifies a `.env` exists on the server, syncs the files, installs production dependencies, and restarts the server using the provider's built-in commands. Since `node_modules` is excluded by default, the server-side install is kept between deploys.
+
+On a first deploy, when no `.env` exists yet, the local `.env.example` is uploaded as `.env` and the deploy aborts before anything else reaches the server — fill in the real values on the server and deploy again. Secrets stay on the server: `.env` is never uploaded, deleted, or overwritten. Node.js hosting is managed via Passenger and relies on file naming/location conventions.
 
 To log in to the server manually:
 
