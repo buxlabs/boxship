@@ -101,6 +101,9 @@ function validate(target) {
   if (target.port !== undefined && !Number.isInteger(target.port)) {
     errors.push(`"port" must be an integer`)
   }
+  if (target.url && !/^https?:\/\//.test(target.url)) {
+    errors.push(`"url" must start with http:// or https://`)
+  }
   return errors
 }
 
@@ -133,7 +136,27 @@ function load(cwd, name) {
       [`invalid target "${name}":`, ...errors.map((error) => `  - ${error}`)].join("\n")
     )
   }
-  return target
+  return { name, target }
+}
+
+const diffCommand = (target) => copy(target).replace("rsync -avz", "rsync -avzn")
+
+async function verify(target) {
+  if (!target.url) {
+    return
+  }
+  let response
+  try {
+    response = await fetch(target.url)
+  } catch (error) {
+    throw new Error(
+      `verification failed: ${target.url} - ${error.cause?.message || error.message}`
+    )
+  }
+  if (!response.ok) {
+    throw new Error(`verification failed: ${target.url} responded with ${response.status}`)
+  }
+  console.log(`${target.url} responded with ${response.status}`)
 }
 
 function run(command, inherit) {
@@ -148,7 +171,7 @@ function run(command, inherit) {
   }
 }
 
-function deploy(target, { dryRun = false, verbose = false } = {}) {
+async function deploy(target, { dryRun = false, verbose = false } = {}) {
   for (const entry of strategies[target.strategy](target)) {
     const { command, interactive } = typeof entry === "string" ? { command: entry } : entry
     if (verbose || dryRun) {
@@ -158,6 +181,9 @@ function deploy(target, { dryRun = false, verbose = false } = {}) {
       run(command, verbose || interactive)
     }
   }
+  if (!dryRun) {
+    await verify(target)
+  }
 }
 
-module.exports = { CONFIG_FILENAME, strategies, load, deploy, run }
+module.exports = { CONFIG_FILENAME, strategies, load, deploy, run, diffCommand, verify }

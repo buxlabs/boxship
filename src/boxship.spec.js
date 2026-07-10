@@ -3,7 +3,8 @@ const assert = require("node:assert")
 const fs = require("fs")
 const os = require("os")
 const path = require("path")
-const { CONFIG_FILENAME, strategies, load, run } = require("./boxship")
+const http = require("http")
+const { CONFIG_FILENAME, strategies, load, run, diffCommand, verify } = require("./boxship")
 
 const DEFAULT_EXCLUDE_FLAGS = `--exclude='.git' --exclude='.env' --exclude='.vscode' --exclude='.idea' --exclude='.DS_Store' --exclude='node_modules' --exclude='test' --exclude='coverage' --exclude='boxship.config.json'`
 
@@ -165,12 +166,12 @@ const target = {
 
 test("load returns the target by name", () => {
   const dir = createConfigDir({ targets: { production: target, staging: target } })
-  assert.deepStrictEqual(load(dir, "staging"), target)
+  assert.deepStrictEqual(load(dir, "staging"), { name: "staging", target })
 })
 
 test("load returns the only target when no name is given", () => {
   const dir = createConfigDir({ targets: { production: target } })
-  assert.deepStrictEqual(load(dir), target)
+  assert.deepStrictEqual(load(dir), { name: "production", target })
 })
 
 test("load throws when the config file is missing", () => {
@@ -285,5 +286,58 @@ test("load accepts locations with tildes, dots and dashes", () => {
       web: { ...target, location: "~/domains/my-site.example.com/public_html" },
     },
   })
-  assert.deepStrictEqual(load(dir).location, "~/domains/my-site.example.com/public_html")
+  assert.deepStrictEqual(
+    load(dir).target.location,
+    "~/domains/my-site.example.com/public_html"
+  )
+})
+
+test("load throws when the url is not http", () => {
+  const dir = createConfigDir({ targets: { web: { ...target, url: "example.com" } } })
+  assert.throws(() => load(dir), /"url" must start with http:\/\/ or https:\/\//)
+})
+
+test("diffCommand returns the rsync command in dry-run mode", () => {
+  const command = diffCommand({
+    username: "user",
+    host: "example.com",
+    location: "~/public",
+  })
+  assert.strictEqual(
+    command,
+    `rsync -avzn --delete -e ssh ${DEFAULT_EXCLUDE_FLAGS} ./ user@example.com:~/public`
+  )
+})
+
+function createServer(statusCode) {
+  const server = http.createServer((request, response) => {
+    response.statusCode = statusCode
+    response.end()
+  })
+  return new Promise((resolve) =>
+    server.listen(0, () =>
+      resolve({ server, url: `http://localhost:${server.address().port}/` })
+    )
+  )
+}
+
+test("verify passes when the url responds with 200", async (t) => {
+  const { server, url } = await createServer(200)
+  t.after(() => server.close())
+  t.mock.method(console, "log", () => {})
+  await assert.doesNotReject(() => verify({ url }))
+})
+
+test("verify fails when the url responds with an error status", async (t) => {
+  const { server, url } = await createServer(500)
+  t.after(() => server.close())
+  await assert.rejects(() => verify({ url }), /verification failed: .* responded with 500/)
+})
+
+test("verify fails when the server is unreachable", async () => {
+  await assert.rejects(() => verify({ url: "http://127.0.0.1:1/" }), /verification failed/)
+})
+
+test("verify does nothing when the target has no url", async () => {
+  await assert.doesNotReject(() => verify({}))
 })

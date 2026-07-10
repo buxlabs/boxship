@@ -8,7 +8,8 @@
 - Supports multiple deployment strategies
 - Incremental deploys — only changed files are transferred, stale files are removed
 - Excluded directories (e.g. user uploads) are preserved on the server
-- Dry-run mode to preview commands before running them
+- Dry-run and diff modes to preview commands and file changes before deploying
+- Post-deploy verification via an HTTP status check
 - Zero dependencies
 - Verbose logging for troubleshooting
 
@@ -69,6 +70,7 @@ The target name can be omitted when the config defines exactly one target.
 
 ### CLI Options
 
+- `--diff` – Show which files would be transferred and deleted, without deploying
 - `--dry-run` – Print the commands without executing them
 - `--verbose` – Log each command and its output
 - `--help` – Show help message
@@ -84,6 +86,7 @@ The target name can be omitted when the config defines exactly one target.
 - `source` – Local directory to sync, with a trailing slash (defaults to `./`)
 - `exclude` – Additional paths to skip, as an array or comma-separated string; excluded paths are neither uploaded nor deleted, so server-side data like `uploads` survives deploys
 - `npm` – npm binary to use for installs (defaults to `npm`)
+- `url` – when set, the deploy is verified by fetching this address afterwards and fails unless it responds with a success status
 
 Values are passed to `ssh` and `rsync` as-is, so they must not contain whitespace, quotes, or shell symbols — the config is validated and deploys are refused otherwise.
 
