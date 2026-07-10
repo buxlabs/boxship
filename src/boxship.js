@@ -141,22 +141,37 @@ function load(cwd, name) {
 
 const diffCommand = (target) => copy(target).replace("rsync -avz", "rsync -avzn")
 
-async function verify(target) {
+const sleep = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds))
+
+async function check(url) {
+  let response
+  try {
+    response = await fetch(url, { signal: AbortSignal.timeout(10000) })
+  } catch (error) {
+    throw new Error(`verification failed: ${url} - ${error.cause?.message || error.message}`)
+  }
+  if (!response.ok) {
+    throw new Error(`verification failed: ${url} responded with ${response.status}`)
+  }
+  return response
+}
+
+async function verify(target, { attempts = 3, delay = 5000 } = {}) {
   if (!target.url) {
     return
   }
-  let response
-  try {
-    response = await fetch(target.url)
-  } catch (error) {
-    throw new Error(
-      `verification failed: ${target.url} - ${error.cause?.message || error.message}`
-    )
+  for (let count = 1; ; count++) {
+    try {
+      const response = await check(target.url)
+      console.log(`${target.url} responded with ${response.status}`)
+      return
+    } catch (error) {
+      if (count === attempts) {
+        throw error
+      }
+      await sleep(delay)
+    }
   }
-  if (!response.ok) {
-    throw new Error(`verification failed: ${target.url} responded with ${response.status}`)
-  }
-  console.log(`${target.url} responded with ${response.status}`)
 }
 
 function run(command, inherit) {

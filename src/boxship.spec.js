@@ -331,11 +331,41 @@ test("verify passes when the url responds with 200", async (t) => {
 test("verify fails when the url responds with an error status", async (t) => {
   const { server, url } = await createServer(500)
   t.after(() => server.close())
-  await assert.rejects(() => verify({ url }), /verification failed: .* responded with 500/)
+  await assert.rejects(
+    () => verify({ url }, { attempts: 1 }),
+    /verification failed: .* responded with 500/
+  )
 })
 
 test("verify fails when the server is unreachable", async () => {
-  await assert.rejects(() => verify({ url: "http://127.0.0.1:1/" }), /verification failed/)
+  await assert.rejects(
+    () => verify({ url: "http://127.0.0.1:1/" }, { attempts: 1 }),
+    /verification failed/
+  )
+})
+
+test("verify retries while the server is restarting", async (t) => {
+  let requests = 0
+  const server = http.createServer((request, response) => {
+    requests++
+    response.statusCode = requests < 3 ? 503 : 200
+    response.end()
+  })
+  await new Promise((resolve) => server.listen(0, resolve))
+  const url = `http://localhost:${server.address().port}/`
+  t.after(() => server.close())
+  t.mock.method(console, "log", () => {})
+  await assert.doesNotReject(() => verify({ url }, { attempts: 3, delay: 10 }))
+  assert.strictEqual(requests, 3)
+})
+
+test("verify gives up after the configured attempts", async (t) => {
+  const { server, url } = await createServer(503)
+  t.after(() => server.close())
+  await assert.rejects(
+    () => verify({ url }, { attempts: 2, delay: 10 }),
+    /responded with 503/
+  )
 })
 
 test("verify does nothing when the target has no url", async () => {

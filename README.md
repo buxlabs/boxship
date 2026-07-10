@@ -86,7 +86,7 @@ The target name can be omitted when the config defines exactly one target.
 - `source` – Local directory to sync, with a trailing slash (defaults to `./`)
 - `exclude` – Additional paths to skip, as an array or comma-separated string; excluded paths are neither uploaded nor deleted, so server-side data like `uploads` survives deploys
 - `npm` – npm binary to use for installs (defaults to `npm`)
-- `url` – when set, the deploy is verified by fetching this address afterwards and fails unless it responds with a success status
+- `url` – when set, the deploy is verified by fetching this address afterwards and fails unless it responds with a success status; the check is retried a few times to give the server time to restart
 
 Values are passed to `ssh` and `rsync` as-is, so they must not contain whitespace, quotes, or shell symbols — the config is validated and deploys are refused otherwise.
 
