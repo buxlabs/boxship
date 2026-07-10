@@ -14,31 +14,31 @@ const excludes = (exclude) =>
     (dir) => `--exclude='${dir.trim()}'`
   )
 
-const ssh = (t, command) =>
-  `ssh -l ${t.username}${t.port ? ` -p ${t.port}` : ""} ${t.host} '${command}'`
+const ssh = (target, command) =>
+  `ssh -l ${target.username}${target.port ? ` -p ${target.port}` : ""} ${target.host} '${command}'`
 
-const copy = (t) =>
+const copy = (target) =>
   [
-    `rsync -avz -e ${t.port ? `'ssh -p ${t.port}'` : "ssh"}`,
-    ...excludes(t.exclude),
-    `${t.source || "*"} ${t.username}@${t.host}:${t.location}`,
+    `rsync -avz -e ${target.port ? `'ssh -p ${target.port}'` : "ssh"}`,
+    ...excludes(target.exclude),
+    `${target.source || "*"} ${target.username}@${target.host}:${target.location}`,
   ].join(" ")
 
 const strategies = {
-  Static: (t) => [
-    ssh(t, `rm -rf ${t.location}/*`),
-    ssh(t, `mkdir -p ${t.location}`),
-    copy(t),
+  Static: (target) => [
+    ssh(target, `rm -rf ${target.location}/*`),
+    ssh(target, `mkdir -p ${target.location}`),
+    copy(target),
   ],
-  MyDevilNet: (t) => [
-    ssh(t, `rm -rf ${t.location}/*`),
-    ssh(t, `mkdir -p ${t.location}`),
-    copy(t),
+  MyDevilNet: (target) => [
+    ssh(target, `rm -rf ${target.location}/*`),
+    ssh(target, `mkdir -p ${target.location}`),
+    copy(target),
     ssh(
-      t,
-      `cd ${t.location} && ${t.npm || "npm"} install --production --omit=dev --silent --no-optional`
+      target,
+      `cd ${target.location} && ${target.npm || "npm"} install --production --omit=dev --silent --no-optional`
     ),
-    ssh(t, `devil www restart ${t.domain}`),
+    ssh(target, `devil www restart ${target.domain}`),
   ],
 }
 
