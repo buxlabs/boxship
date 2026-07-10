@@ -191,3 +191,40 @@ test("load throws when domain is missing for MyDevilNet", () => {
   const dir = createConfigDir({ targets: { web: { ...target, strategy: "MyDevilNet" } } })
   assert.throws(() => load(dir), /"domain" is required/)
 })
+
+test("load throws when a location contains whitespace", () => {
+  const dir = createConfigDir({
+    targets: { web: { ...target, location: "~/my public" } },
+  })
+  assert.throws(() => load(dir), /"location" contains unsupported characters/)
+})
+
+test("load throws when a username contains shell symbols", () => {
+  const dir = createConfigDir({
+    targets: { web: { ...target, username: "user;rm" } },
+  })
+  assert.throws(() => load(dir), /"username" contains unsupported characters/)
+})
+
+test("load throws when an exclude entry contains a quote", () => {
+  const dir = createConfigDir({
+    targets: { web: { ...target, exclude: ["uploads", "it's"] } },
+  })
+  assert.throws(() => load(dir), /exclude "it's" contains unsupported characters/)
+})
+
+test("load throws when the port is not an integer", () => {
+  const dir = createConfigDir({
+    targets: { web: { ...target, port: "2222" } },
+  })
+  assert.throws(() => load(dir), /"port" must be an integer/)
+})
+
+test("load accepts locations with tildes, dots and dashes", () => {
+  const dir = createConfigDir({
+    targets: {
+      web: { ...target, location: "~/domains/my-site.example.com/public_html" },
+    },
+  })
+  assert.deepStrictEqual(load(dir).location, "~/domains/my-site.example.com/public_html")
+})

@@ -85,6 +85,8 @@ The target name can be omitted when the config defines exactly one target.
 - `exclude` – Additional paths to skip, as an array or comma-separated string; excluded paths are neither uploaded nor deleted, so server-side data like `uploads` survives deploys
 - `npm` – npm binary to use for installs (defaults to `npm`)
 
+Values are passed to `ssh` and `rsync` as-is, so they must not contain whitespace, quotes, or shell symbols — the config is validated and deploys are refused otherwise.
+
 Deploys are incremental: files are synced with `rsync --delete`, so only changed files are transferred and files removed locally are removed from the server.
 
 ### Default Excludes

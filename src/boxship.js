@@ -9,6 +9,8 @@ const REQUIRED = {
   MyDevilNet: ["username", "host", "location", "domain"],
 }
 
+const UNSAFE_CHARACTERS = /[\s'"`$;&|<>()\\]/
+
 const DEFAULT_EXCLUDES = [
   ".git",
   ".env",
@@ -21,9 +23,13 @@ const DEFAULT_EXCLUDES = [
   CONFIG_FILENAME,
 ]
 
+const excludeList = (exclude) =>
+  (Array.isArray(exclude) ? exclude : exclude ? exclude.split(",") : []).map((dir) =>
+    dir.trim()
+  )
+
 const excludes = (exclude) => {
-  const custom = Array.isArray(exclude) ? exclude : exclude ? exclude.split(",") : []
-  const dirs = new Set([...DEFAULT_EXCLUDES, ...custom.map((dir) => dir.trim())])
+  const dirs = new Set([...DEFAULT_EXCLUDES, ...excludeList(exclude)])
   return [...dirs].map((dir) => `--exclude='${dir}'`)
 }
 
@@ -66,6 +72,19 @@ function validate(target) {
     if (!target[key]) {
       errors.push(`"${key}" is required`)
     }
+  }
+  for (const key of ["username", "host", "domain", "location", "source", "npm"]) {
+    if (target[key] && UNSAFE_CHARACTERS.test(target[key])) {
+      errors.push(`"${key}" contains unsupported characters (whitespace, quotes or shell symbols)`)
+    }
+  }
+  for (const dir of excludeList(target.exclude)) {
+    if (UNSAFE_CHARACTERS.test(dir)) {
+      errors.push(`exclude "${dir}" contains unsupported characters (whitespace, quotes or shell symbols)`)
+    }
+  }
+  if (target.port !== undefined && !Number.isInteger(target.port)) {
+    errors.push(`"port" must be an integer`)
   }
   return errors
 }
