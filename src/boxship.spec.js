@@ -128,6 +128,47 @@ test("MyDevilNet returns mkdir, env step, rsync, install and restart commands", 
   ])
 })
 
+test("before and after hooks run around the copy on Static", () => {
+  const commands = strategies.Static({
+    username: "user",
+    host: "example.com",
+    location: "~/public",
+    before: ["node prepare.js"],
+    after: ["node cleanup.js", "node report.js"],
+  })
+  assert.deepStrictEqual(commands, [
+    `ssh -l user example.com 'mkdir -p ~/public'`,
+    `ssh -l user example.com 'cd ~/public && node prepare.js'`,
+    `rsync -avz --delete -e ssh ${DEFAULT_EXCLUDE_FLAGS} ./ user@example.com:~/public`,
+    `ssh -l user example.com 'cd ~/public && node cleanup.js'`,
+    `ssh -l user example.com 'cd ~/public && node report.js'`,
+  ])
+})
+
+test("hooks wrap the deploy on MyDevilNet and accept a single string", () => {
+  const commands = strategies.MyDevilNet({
+    username: "user",
+    host: "s1.mydevil.net",
+    domain: "buxlabs.pl",
+    location: "~/app",
+    before: "node backup.js",
+    after: "node migrate.js",
+  })
+  assert.strictEqual(commands[2], `ssh -l user s1.mydevil.net 'cd ~/app && node backup.js'`)
+  assert.strictEqual(
+    commands.at(-1),
+    `ssh -l user s1.mydevil.net 'cd ~/app && node migrate.js'`
+  )
+  assert.match(commands.at(-2), /devil www restart/)
+})
+
+test("load rejects hook commands with single quotes", () => {
+  const dir = createConfigDir({
+    targets: { web: { ...target, after: [`echo 'hi'`] } },
+  })
+  assert.throws(() => load(dir), /after command "echo 'hi'" must not contain single quotes/)
+})
+
 test("parseKeys extracts key names from env file content", () => {
   const content = "# comment\n\nKEY=value\n  SPACED_KEY = value\nNO_VALUE=\nlower_key=x\n1BAD=x\nnot a key line\n"
   assert.deepStrictEqual(parseKeys(content), ["KEY", "SPACED_KEY", "NO_VALUE", "lower_key"])

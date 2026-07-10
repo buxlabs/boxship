@@ -114,20 +114,29 @@ function ensureEnv(target, { verbose = false, exec = execSync } = {}) {
   }
 }
 
+const hooks = (target, phase) =>
+  [].concat(target[phase] || []).map((command) =>
+    ssh(target, `cd ${target.location} && ${command}`)
+  )
+
 const strategies = {
   Static: (target) => [
     ssh(target, `mkdir -p ${target.location}`),
+    ...hooks(target, "before"),
     copy(target),
+    ...hooks(target, "after"),
   ],
   MyDevilNet: (target) => [
     ssh(target, `mkdir -p ${target.location}`),
     { description: `ensure ${target.location}/.env is complete`, execute: ensureEnv },
+    ...hooks(target, "before"),
     copy(target),
     ssh(
       target,
       `cd ${target.location} && ${target.npm || "npm"} install --production --omit=dev --silent --no-optional`
     ),
     ssh(target, `devil www restart ${target.domain}`),
+    ...hooks(target, "after"),
   ],
 }
 
@@ -163,6 +172,13 @@ function validate(target) {
   }
   if (target.url && !/^https?:\/\//.test(target.url)) {
     errors.push(`"url" must start with http:// or https://`)
+  }
+  for (const phase of ["before", "after"]) {
+    for (const command of [].concat(target[phase] || [])) {
+      if (command.includes("'")) {
+        errors.push(`${phase} command "${command}" must not contain single quotes`)
+      }
+    }
   }
   return errors
 }
