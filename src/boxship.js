@@ -45,8 +45,13 @@ const copy = (target) =>
 
 const ensureEnv = (target) => {
   const seed = `scp ${target.port ? `-P ${target.port} ` : ""}.env.example ${target.username}@${target.host}:${target.location}/.env`
+  const edit = `ssh -t -l ${target.username}${target.port ? ` -p ${target.port}` : ""} ${target.host} 'cd ${target.location} && \${EDITOR:-nano} .env'`
   const message = `seeded ${target.location}/.env from .env.example - fill in real values on the server and redeploy`
-  return `${ssh(target, `test -f ${target.location}/.env`)} || (${seed} && echo "${message}" >&2; exit 1)`
+  const abort = `(echo "${message}" >&2; exit 1)`
+  return {
+    command: `${ssh(target, `test -f ${target.location}/.env`)} || (${seed} && ([ -t 0 ] && ${edit} || ${abort}))`,
+    interactive: true,
+  }
 }
 
 const strategies = {
@@ -128,9 +133,9 @@ function load(cwd, name) {
   return target
 }
 
-function run(command, verbose) {
+function run(command, inherit) {
   try {
-    execSync(command, { stdio: verbose ? "inherit" : "pipe" })
+    execSync(command, { stdio: inherit ? "inherit" : "pipe" })
   } catch (error) {
     const output = [error.stderr, error.stdout]
       .map((stream) => (stream ? stream.toString().trim() : ""))
@@ -141,12 +146,13 @@ function run(command, verbose) {
 }
 
 function deploy(target, { dryRun = false, verbose = false } = {}) {
-  for (const command of strategies[target.strategy](target)) {
+  for (const entry of strategies[target.strategy](target)) {
+    const { command, interactive } = typeof entry === "string" ? { command: entry } : entry
     if (verbose || dryRun) {
       console.log(command)
     }
     if (!dryRun) {
-      run(command, verbose)
+      run(command, verbose || interactive)
     }
   }
 }

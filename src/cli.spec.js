@@ -63,7 +63,7 @@ test("it prints the deployment commands in dry-run mode", () => {
   assert.strictEqual(result.status, 0)
   assert.deepStrictEqual(result.stdout.trim().split("\n"), [
     `ssh -l user s1.mydevil.net 'mkdir -p ~/domains/example.com/public_nodejs'`,
-    `ssh -l user s1.mydevil.net 'test -f ~/domains/example.com/public_nodejs/.env' || (scp .env.example user@s1.mydevil.net:~/domains/example.com/public_nodejs/.env && echo "seeded ~/domains/example.com/public_nodejs/.env from .env.example - fill in real values on the server and redeploy" >&2; exit 1)`,
+    `ssh -l user s1.mydevil.net 'test -f ~/domains/example.com/public_nodejs/.env' || (scp .env.example user@s1.mydevil.net:~/domains/example.com/public_nodejs/.env && ([ -t 0 ] && ssh -t -l user s1.mydevil.net 'cd ~/domains/example.com/public_nodejs && \${EDITOR:-nano} .env' || (echo "seeded ~/domains/example.com/public_nodejs/.env from .env.example - fill in real values on the server and redeploy" >&2; exit 1)))`,
     `rsync -avz --delete -e ssh ${DEFAULT_EXCLUDE_FLAGS} --exclude='uploads' ./ user@s1.mydevil.net:~/domains/example.com/public_nodejs`,
     `ssh -l user s1.mydevil.net 'cd ~/domains/example.com/public_nodejs && npm install --production --omit=dev --silent --no-optional'`,
     `ssh -l user s1.mydevil.net 'devil www restart example.com'`,

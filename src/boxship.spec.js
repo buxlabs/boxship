@@ -106,7 +106,10 @@ test("MyDevilNet returns mkdir, env check, rsync, install and restart commands",
   })
   assert.deepStrictEqual(commands, [
     `ssh -l user s1.mydevil.net 'mkdir -p ~/domains/buxlabs.pl/public_nodejs'`,
-    `ssh -l user s1.mydevil.net 'test -f ~/domains/buxlabs.pl/public_nodejs/.env' || (scp .env.example user@s1.mydevil.net:~/domains/buxlabs.pl/public_nodejs/.env && echo "seeded ~/domains/buxlabs.pl/public_nodejs/.env from .env.example - fill in real values on the server and redeploy" >&2; exit 1)`,
+    {
+      command: `ssh -l user s1.mydevil.net 'test -f ~/domains/buxlabs.pl/public_nodejs/.env' || (scp .env.example user@s1.mydevil.net:~/domains/buxlabs.pl/public_nodejs/.env && ([ -t 0 ] && ssh -t -l user s1.mydevil.net 'cd ~/domains/buxlabs.pl/public_nodejs && \${EDITOR:-nano} .env' || (echo "seeded ~/domains/buxlabs.pl/public_nodejs/.env from .env.example - fill in real values on the server and redeploy" >&2; exit 1)))`,
+      interactive: true,
+    },
     `rsync -avz --delete -e ssh ${DEFAULT_EXCLUDE_FLAGS} ./ user@s1.mydevil.net:~/domains/buxlabs.pl/public_nodejs`,
     `ssh -l user s1.mydevil.net 'cd ~/domains/buxlabs.pl/public_nodejs && npm install --production --omit=dev --silent --no-optional'`,
     `ssh -l user s1.mydevil.net 'devil www restart buxlabs.pl'`,
@@ -122,7 +125,7 @@ test("the env check seeds .env from .env.example and fails, then passes once .en
     domain: "example.com",
     location: dir,
   })
-  const check = commands[1]
+  const check = commands[1].command
     .replaceAll("ssh -l user example.com ", "sh -c ")
     .replaceAll("scp .env.example user@example.com:", "cp .env.example ")
   const cwd = process.cwd()
