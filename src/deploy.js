@@ -1,18 +1,18 @@
-const shell = require("shelljs")
+const { execSync } = require("child_process")
+const strategies = require("./strategies")
 
-module.exports = function deploy(options, Strategy) {
-  let strategy = new Strategy({
-    username: options.username,
-    host: options.host,
-    domain: options.domain,
-    location: options.location,
-    verbose: options.verbose,
-    source: options.source,
-    exclude: options.exclude,
-    port: options.port,
-    npm: options.npm,
+module.exports = function deploy(target, { dryRun = false, verbose = false } = {}) {
+  const Strategy = strategies[target.strategy]
+  const exec = dryRun
+    ? (command) => console.log(command)
+    : (command, { silent } = {}) =>
+        execSync(command, { stdio: silent ? "pipe" : "inherit" })
+
+  const strategy = new Strategy({
+    ...target,
+    verbose,
     logger: { log: console.log },
-    exec: shell.exec,
+    exec,
   })
 
   strategy.deploy()

@@ -4,10 +4,11 @@
 
 ## Features
 
-- Easy deployment via CLI
+- Config-file based deployments with multiple named targets
 - Supports multiple deployment strategies
 - Automates file copying, cleanup, and server restarts
-- Integrates with npm scripts
+- Dry-run mode to preview commands before running them
+- Zero dependencies
 - Verbose logging for troubleshooting
 
 ## Quick Start
@@ -18,12 +19,36 @@ Install Boxship as a development dependency:
 npm install boxship --save-dev
 ```
 
+Create a `boxship.config.json` in your project root:
+
+```json
+{
+  "targets": {
+    "production": {
+      "strategy": "MyDevilNet",
+      "username": "someuser",
+      "host": "s1.mydevil.net",
+      "domain": "example.com",
+      "location": "~/domains/example.com/public_nodejs",
+      "exclude": ["node_modules"]
+    },
+    "staging": {
+      "strategy": "Static",
+      "username": "someuser",
+      "host": "staging.example.com",
+      "location": "~/public",
+      "port": 2222
+    }
+  }
+}
+```
+
 Add a deploy script to your `package.json`:
 
 ```json
 "scripts": {
     "predeploy": "npm run build:production",
-	"deploy": "boxship --username=someuser --host=s1.mydevil.net --domain=example.com --location=~/domains/example.com/public_nodejs --strategy=MyDevilNet --verbose"
+    "deploy": "boxship production"
 }
 ```
 
@@ -35,21 +60,29 @@ npm run deploy
 
 ## Usage
 
-Boxship is used via the command line. The most common options are:
-
 ```bash
-boxship --username=<user> --host=<host> --domain=<domain> --location=<path> --strategy=<strategy> [options]
+boxship [target] [options]
 ```
+
+The target name can be omitted when the config defines exactly one target.
 
 ### CLI Options
 
-- `--username` – SSH username for the remote server
-- `--host` – Hostname or IP address of the server
-- `--domain` – Domain name for deployment
-- `--location` – Target directory on the server
-- `--strategy` – Deployment strategy (`Static` or `MyDevilNet`)
-- `--verbose` – Enable verbose logging
+- `--dry-run` – Print the commands without executing them
+- `--verbose` – Log deployment stages and command output
 - `--help` – Show help message
+
+### Target Options
+
+- `strategy` – Deployment strategy (`Static` or `MyDevilNet`)
+- `username` – SSH username for the remote server
+- `host` – Hostname or IP address of the server
+- `location` – Target directory on the server
+- `domain` – Domain name for deployment (required for `MyDevilNet`)
+- `port` – SSH port (`Static` only)
+- `source` – Local files to copy (defaults to `*`)
+- `exclude` – Directories to skip when copying, as an array or comma-separated string
+- `npm` – npm binary to use for installs (defaults to `npm`)
 
 ## Deployment Strategies
 

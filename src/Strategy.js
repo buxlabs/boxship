@@ -41,6 +41,16 @@ class Strategy {
     this.log("deploy:stop")
   }
 
+  excludeFlags() {
+    if (!this.exclude) {
+      return []
+    }
+    const parts = Array.isArray(this.exclude)
+      ? this.exclude
+      : this.exclude.split(",")
+    return parts.map((part) => `--exclude='${part.trim()}'`)
+  }
+
   log(message) {
     if (this.verbose) {
       this.logger.log(message)

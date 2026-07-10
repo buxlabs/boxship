@@ -22,11 +22,7 @@
     "url": "https://github.com/buxlabs/boxship/issues"
   },
   "homepage": "https://github.com/buxlabs/boxship#readme",
-  "dependencies": {
-    "minimist": "^1.2.8",
-    "shelljs": "^0.10.0"
-  },
-  "devDependencies": {
-    "sinon": "^21.0.0"
+  "engines": {
+    "node": ">=20"
   }
 }

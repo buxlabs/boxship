@@ -1,14 +1,5 @@
 const Strategy = require("../Strategy")
 
-function normalizeExclude(exclude) {
-  if (exclude.includes(",")) {
-    const parts = exclude.split(",")
-    const text = `{${parts.map((part) => `'${part}'`).join(",")}}`
-    return text
-  }
-  return `'${exclude}'`
-}
-
 class StaticStrategy extends Strategy {
   clean() {
     this.ssh(`rm -rf ${this.location}/*`)
@@ -18,9 +9,7 @@ class StaticStrategy extends Strategy {
     const cmd = this.port
       ? [`rsync -avz -e 'ssh -p ${this.port}'`]
       : ["rsync -avz -e ssh"]
-    if (this.exclude) {
-      cmd.push(`--exclude=${normalizeExclude(this.exclude)}`)
-    }
+    cmd.push(...this.excludeFlags())
     cmd.push(`${this.source} ${this.username}@${this.host}:${this.location}`)
     this.exec(cmd.join(" "), { silent: this.silent })
   }
