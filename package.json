@@ -2,7 +2,7 @@
   "name": "boxship",
   "version": "1.7.0",
   "description": "Deployment scripts",
-  "main": "src/deploy.js",
+  "main": "src/boxship.js",
   "scripts": {
     "test": "node --test \"src/**/*.spec.js\"",
     "coverage": "node --test --experimental-test-coverage \"src/**/*.spec.js\""

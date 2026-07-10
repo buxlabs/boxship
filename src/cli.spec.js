@@ -4,7 +4,7 @@ const fs = require("fs")
 const os = require("os")
 const path = require("path")
 const { spawnSync } = require("child_process")
-const { CONFIG_FILENAME } = require("./config")
+const { CONFIG_FILENAME } = require("./boxship")
 
 const BIN = path.join(__dirname, "..", "bin", "boxship.js")
 
@@ -68,17 +68,13 @@ test("it prints the deployment commands in dry-run mode", () => {
   ])
 })
 
-test("it logs stages in verbose dry-run mode", () => {
+test("it prints each command once in verbose dry-run mode", () => {
   const result = run(["staging", "--dry-run", "--verbose"], config)
   assert.strictEqual(result.status, 0)
   assert.deepStrictEqual(result.stdout.trim().split("\n"), [
-    "deploy:start",
-    "stage:clean",
     `ssh -l user -p 2222 staging.example.com 'rm -rf ~/public/*'`,
-    "stage:copy",
     `ssh -l user -p 2222 staging.example.com 'mkdir -p ~/public'`,
     `rsync -avz -e 'ssh -p 2222' * user@staging.example.com:~/public`,
-    "deploy:stop",
   ])
 })
 

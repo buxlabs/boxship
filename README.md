@@ -69,7 +69,7 @@ The target name can be omitted when the config defines exactly one target.
 ### CLI Options
 
 - `--dry-run` – Print the commands without executing them
-- `--verbose` – Log deployment stages and command output
+- `--verbose` – Log each command and its output
 - `--help` – Show help message
 
 ### Target Options
