@@ -206,6 +206,16 @@ test("load throws when required fields are missing", () => {
   )
 })
 
+test("load rejects a target name from the prototype chain", () => {
+  const dir = createConfigDir({ targets: { production: target } })
+  assert.throws(() => load(dir, "__proto__"), /unknown target "__proto__"/)
+})
+
+test("load rejects a strategy name from the prototype chain", () => {
+  const dir = createConfigDir({ targets: { web: { ...target, strategy: "constructor" } } })
+  assert.throws(() => load(dir), /unknown strategy "constructor"/)
+})
+
 test("load throws on an unknown strategy", () => {
   const dir = createConfigDir({ targets: { web: { ...target, strategy: "static" } } })
   assert.throws(() => load(dir), /unknown strategy "static", available: Static, MyDevilNet/)

@@ -75,12 +75,15 @@ function validate(target) {
   const errors = []
   if (!target.strategy) {
     errors.push(`"strategy" is required`)
-  } else if (!strategies[target.strategy]) {
+  } else if (!Object.hasOwn(strategies, target.strategy)) {
     errors.push(
       `unknown strategy "${target.strategy}", available: ${Object.keys(strategies).join(", ")}`
     )
   }
-  for (const key of REQUIRED[target.strategy] || ["username", "host", "location"]) {
+  const required = Object.hasOwn(REQUIRED, target.strategy)
+    ? REQUIRED[target.strategy]
+    : ["username", "host", "location"]
+  for (const key of required) {
     if (!target[key]) {
       errors.push(`"${key}" is required`)
     }
@@ -120,10 +123,10 @@ function load(cwd, name) {
     throw new Error(`multiple targets available, pick one of: ${names.join(", ")}`)
   }
   name = name || names[0]
-  const target = config.targets[name]
-  if (!target) {
+  if (!Object.hasOwn(config.targets, name)) {
     throw new Error(`unknown target "${name}", available: ${names.join(", ")}`)
   }
+  const target = config.targets[name]
   const errors = validate(target)
   if (errors.length > 0) {
     throw new Error(
