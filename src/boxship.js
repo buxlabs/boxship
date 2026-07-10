@@ -19,19 +19,17 @@ const ssh = (target, command) =>
 
 const copy = (target) =>
   [
-    `rsync -avz -e ${target.port ? `'ssh -p ${target.port}'` : "ssh"}`,
+    `rsync -avz --delete -e ${target.port ? `'ssh -p ${target.port}'` : "ssh"}`,
     ...excludes(target.exclude),
-    `${target.source || "*"} ${target.username}@${target.host}:${target.location}`,
+    `${target.source || "./"} ${target.username}@${target.host}:${target.location}`,
   ].join(" ")
 
 const strategies = {
   Static: (target) => [
-    ssh(target, `rm -rf ${target.location}/*`),
     ssh(target, `mkdir -p ${target.location}`),
     copy(target),
   ],
   MyDevilNet: (target) => [
-    ssh(target, `rm -rf ${target.location}/*`),
     ssh(target, `mkdir -p ${target.location}`),
     copy(target),
     ssh(

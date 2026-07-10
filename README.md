@@ -6,7 +6,8 @@
 
 - Config-file based deployments with multiple named targets
 - Supports multiple deployment strategies
-- Automates file copying, cleanup, and server restarts
+- Incremental deploys — only changed files are transferred, stale files are removed
+- Excluded directories (e.g. user uploads) are preserved on the server
 - Dry-run mode to preview commands before running them
 - Zero dependencies
 - Verbose logging for troubleshooting
@@ -80,19 +81,21 @@ The target name can be omitted when the config defines exactly one target.
 - `location` – Target directory on the server
 - `domain` – Domain name for deployment (required for `MyDevilNet`)
 - `port` – SSH port (`Static` only)
-- `source` – Local files to copy (defaults to `*`)
-- `exclude` – Directories to skip when copying, as an array or comma-separated string
+- `source` – Local directory to sync, with a trailing slash (defaults to `./`)
+- `exclude` – Directories to skip, as an array or comma-separated string; excluded directories are neither uploaded nor deleted, so server-side data like `uploads` survives deploys
 - `npm` – npm binary to use for installs (defaults to `npm`)
+
+Deploys are incremental: files are synced with `rsync --delete`, so only changed files are transferred and files removed locally are removed from the server. Note that when deploying from a project root (the default `./` source), directories like `.git` should be listed in `exclude`.
 
 ## Deployment Strategies
 
 ### Static
 
-For static hosting environments that serve files from a public directory. This strategy copies your build output to the specified folder.
+For static hosting environments that serve files from a public directory. This strategy syncs your build output to the specified folder.
 
 ### MyDevilNet
 
-For MyDevilNet hosting, this strategy removes old files, uploads new ones, and restarts the server using the provider's built-in commands. Node.js hosting is managed via Passenger and relies on file naming/location conventions.
+For MyDevilNet hosting, this strategy syncs the files, installs production dependencies, and restarts the server using the provider's built-in commands. Add `node_modules` to `exclude` to keep the server-side install between deploys. Node.js hosting is managed via Passenger and relies on file naming/location conventions.
 
 To log in to the server manually:
 

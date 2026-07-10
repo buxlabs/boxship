@@ -60,9 +60,8 @@ test("it prints the deployment commands in dry-run mode", () => {
   const result = run(["production", "--dry-run"], config)
   assert.strictEqual(result.status, 0)
   assert.deepStrictEqual(result.stdout.trim().split("\n"), [
-    `ssh -l user s1.mydevil.net 'rm -rf ~/domains/example.com/public_nodejs/*'`,
     `ssh -l user s1.mydevil.net 'mkdir -p ~/domains/example.com/public_nodejs'`,
-    `rsync -avz -e ssh --exclude='node_modules' --exclude='test' * user@s1.mydevil.net:~/domains/example.com/public_nodejs`,
+    `rsync -avz --delete -e ssh --exclude='node_modules' --exclude='test' ./ user@s1.mydevil.net:~/domains/example.com/public_nodejs`,
     `ssh -l user s1.mydevil.net 'cd ~/domains/example.com/public_nodejs && npm install --production --omit=dev --silent --no-optional'`,
     `ssh -l user s1.mydevil.net 'devil www restart example.com'`,
   ])
@@ -72,9 +71,8 @@ test("it prints each command once in verbose dry-run mode", () => {
   const result = run(["staging", "--dry-run", "--verbose"], config)
   assert.strictEqual(result.status, 0)
   assert.deepStrictEqual(result.stdout.trim().split("\n"), [
-    `ssh -l user -p 2222 staging.example.com 'rm -rf ~/public/*'`,
     `ssh -l user -p 2222 staging.example.com 'mkdir -p ~/public'`,
-    `rsync -avz -e 'ssh -p 2222' * user@staging.example.com:~/public`,
+    `rsync -avz --delete -e 'ssh -p 2222' ./ user@staging.example.com:~/public`,
   ])
 })
 
@@ -83,7 +81,7 @@ test("it deploys the only target when no name is given", () => {
     targets: { production: config.targets.staging },
   })
   assert.strictEqual(result.status, 0)
-  assert.match(result.stdout, /rsync -avz -e 'ssh -p 2222'/)
+  assert.match(result.stdout, /rsync -avz --delete -e 'ssh -p 2222'/)
 })
 
 test("it fails when no name is given and multiple targets exist", () => {
