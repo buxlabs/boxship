@@ -4,12 +4,16 @@ const { execSync } = require("child_process")
 
 const CONFIG_FILENAME = "boxship.config.json"
 
+const ENV_EXAMPLE = ".env.example"
+
 const REQUIRED = {
   Static: ["username", "host", "location"],
   MyDevilNet: ["username", "host", "location", "domain"],
 }
 
 const UNSAFE_CHARACTERS = /[\s'"`$;&|<>()\\]/
+
+const ENV_KEY = /^[A-Za-z_][A-Za-z0-9_]*$/
 
 const DEFAULT_EXCLUDES = [
   ".git",
@@ -46,23 +50,67 @@ const copy = (target) =>
 const editEnv = (target) =>
   `ssh -t -l ${target.username}${target.port ? ` -p ${target.port}` : ""} ${target.host} 'cd ${target.location} && \${EDITOR:-nano} .env'`
 
-const abortWith = (message) => `(echo "${message}" >&2; exit 1)`
+const parseEnvLines = (text) => text.replace(/^\uFEFF/, "").split(/\r?\n/)
 
-const ensureEnv = (target) => {
-  const seed = `scp ${target.port ? `-P ${target.port} ` : ""}.env.example ${target.username}@${target.host}:${target.location}/.env`
-  const message = `seeded ${target.location}/.env from .env.example - fill in real values on the server and redeploy`
-  return {
-    command: `${ssh(target, `test -f ${target.location}/.env`)} || (${seed} && ([ -t 0 ] && ${editEnv(target)} || ${abortWith(message)}))`,
-    interactive: true,
+const parseKeys = (text) =>
+  parseEnvLines(text)
+    .map((line) => line.split("=")[0].trim())
+    .filter((key) => ENV_KEY.test(key))
+
+const missingEnvLines = (example, keys) =>
+  parseEnvLines(example).filter((line) => {
+    if (!line.includes("=")) {
+      return false
+    }
+    const key = line.split("=")[0].trim()
+    return ENV_KEY.test(key) && !keys.includes(key)
+  })
+
+function envFileExists(target, exec) {
+  try {
+    exec(ssh(target, `test -f ${target.location}/.env`), { stdio: "pipe" })
+    return true
+  } catch (error) {
+    if (error.status === 1) {
+      return false
+    }
+    throw error
   }
 }
 
-const ensureEnvKeys = (target) => {
-  const detect = `cd ${target.location} && missing=$(for key in $(grep -E "^[A-Za-z_][A-Za-z0-9_]*=" .env.example 2>/dev/null | cut -d= -f1); do grep -q "^$key=" .env || echo $key; done); if [ -n "$missing" ]; then for key in $missing; do grep "^$key=" .env.example >> .env; done; echo "added missing keys to ${target.location}/.env: $missing - fill in real values" >&2; exit 1; fi`
-  const message = `filled ${target.location}/.env with missing keys from .env.example - fill in real values on the server and redeploy`
-  return {
-    command: `${ssh(target, detect)} || ([ -t 0 ] && ${editEnv(target)} || ${abortWith(message)})`,
-    interactive: true,
+function ensureEnv(target, { verbose = false, exec = execSync } = {}) {
+  if (!fs.existsSync(ENV_EXAMPLE)) {
+    return
+  }
+  if (envFileExists(target, exec)) {
+    const output = run(ssh(target, `cut -d= -f1 ${target.location}/.env`), {}, exec)
+    const example = fs.readFileSync(ENV_EXAMPLE, "utf8")
+    const missing = missingEnvLines(example, parseKeys(output.toString()))
+    if (missing.length === 0) {
+      return
+    }
+    run(
+      ssh(target, `cat >> ${target.location}/.env`),
+      { input: "\n" + missing.join("\n") + "\n" },
+      exec
+    )
+    console.log(
+      `added missing keys to ${target.location}/.env: ${parseKeys(missing.join("\n")).join(", ")}`
+    )
+  } else {
+    run(
+      `scp ${target.port ? `-P ${target.port} ` : ""}${ENV_EXAMPLE} ${target.username}@${target.host}:${target.location}/.env`,
+      { inherit: verbose },
+      exec
+    )
+    console.log(`seeded ${target.location}/.env from ${ENV_EXAMPLE}`)
+  }
+  if (process.stdin.isTTY) {
+    run(editEnv(target), { inherit: true }, exec)
+  } else {
+    throw new Error(
+      `fill in real values in ${target.location}/.env on the server and redeploy`
+    )
   }
 }
 
@@ -73,9 +121,8 @@ const strategies = {
   ],
   MyDevilNet: (target) => [
     ssh(target, `mkdir -p ${target.location}`),
-    ensureEnv(target),
+    { description: `ensure ${target.location}/.env is complete`, execute: ensureEnv },
     copy(target),
-    ensureEnvKeys(target),
     ssh(
       target,
       `cd ${target.location} && ${target.npm || "npm"} install --production --omit=dev --silent --no-optional`
@@ -187,9 +234,9 @@ async function verify(target, { attempts = 3, delay = 5000 } = {}) {
   }
 }
 
-function run(command, inherit) {
+function run(command, { inherit = false, input } = {}, exec = execSync) {
   try {
-    execSync(command, { stdio: inherit ? "inherit" : "pipe" })
+    return exec(command, { stdio: inherit ? "inherit" : "pipe", input })
   } catch (error) {
     const output = [error.stderr, error.stdout]
       .map((stream) => (stream ? stream.toString().trim() : ""))
@@ -201,12 +248,20 @@ function run(command, inherit) {
 
 async function deploy(target, { dryRun = false, verbose = false } = {}) {
   for (const entry of strategies[target.strategy](target)) {
-    const { command, interactive } = typeof entry === "string" ? { command: entry } : entry
-    if (verbose || dryRun) {
-      console.log(command)
-    }
-    if (!dryRun) {
-      run(command, verbose || interactive)
+    if (typeof entry === "string") {
+      if (verbose || dryRun) {
+        console.log(entry)
+      }
+      if (!dryRun) {
+        run(entry, { inherit: verbose })
+      }
+    } else {
+      if (verbose || dryRun) {
+        console.log(`# ${entry.description}`)
+      }
+      if (!dryRun) {
+        entry.execute(target, { verbose })
+      }
     }
   }
   if (!dryRun) {
@@ -214,4 +269,15 @@ async function deploy(target, { dryRun = false, verbose = false } = {}) {
   }
 }
 
-module.exports = { CONFIG_FILENAME, strategies, load, deploy, run, diffCommand, verify }
+module.exports = {
+  CONFIG_FILENAME,
+  strategies,
+  load,
+  deploy,
+  run,
+  diffCommand,
+  verify,
+  ensureEnv,
+  parseKeys,
+  missingEnvLines,
+}

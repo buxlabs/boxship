@@ -112,7 +112,7 @@ For MyDevilNet hosting, this strategy verifies a `.env` exists on the server, sy
 
 On a first deploy, when no `.env` exists yet, the local `.env.example` is uploaded as `.env` and an editor (`$EDITOR`, falling back to `nano`) opens on the server over ssh — fill in the real values, save, and the deploy continues. When run without a terminal, the deploy seeds the file and aborts instead. Secrets stay on the server: they are typed directly into the remote editor, never appearing in local files, command arguments, or shell history, and `.env` is never uploaded, deleted, or overwritten.
 
-After the files are synced, the keys of the server's `.env` are compared against the deployed `.env.example` — only key names, never values. When new variables have appeared in `.env.example`, they are appended to `.env` with their example values and the editor opens again (or the deploy aborts without a terminal), so the app is never restarted with missing configuration. Node.js hosting is managed via Passenger and relies on file naming/location conventions.
+Before the files are synced, the keys of the server's `.env` are compared against the local `.env.example` — only key names, never values. When new variables have appeared in `.env.example`, they are appended to `.env` with their example values and the editor opens again (or the deploy aborts without a terminal), so no code ships and nothing restarts until the configuration is complete. Node.js hosting is managed via Passenger and relies on file naming/location conventions.
 
 To log in to the server manually:
 

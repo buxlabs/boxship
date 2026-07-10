@@ -39,7 +39,7 @@ if (args.values.help) {
 async function main() {
   const { name, target } = load(process.cwd(), args.positionals[0])
   if (args.values.diff) {
-    run(diffCommand(target), true)
+    run(diffCommand(target), { inherit: true })
     return
   }
   const started = Date.now()

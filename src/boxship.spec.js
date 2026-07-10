@@ -4,7 +4,18 @@ const fs = require("fs")
 const os = require("os")
 const path = require("path")
 const http = require("http")
-const { CONFIG_FILENAME, strategies, load, run, diffCommand, verify } = require("./boxship")
+const { execSync } = require("child_process")
+const {
+  CONFIG_FILENAME,
+  strategies,
+  load,
+  run,
+  diffCommand,
+  verify,
+  ensureEnv,
+  parseKeys,
+  missingEnvLines,
+} = require("./boxship")
 
 const DEFAULT_EXCLUDE_FLAGS = `--exclude='.git' --exclude='.env' --exclude='.vscode' --exclude='.idea' --exclude='.DS_Store' --exclude='node_modules' --exclude='test' --exclude='coverage' --exclude='boxship.config.json'`
 
@@ -98,7 +109,7 @@ test("Static does not duplicate excludes already in the defaults", () => {
   )
 })
 
-test("MyDevilNet returns mkdir, env check, rsync, env keys check, install and restart commands", () => {
+test("MyDevilNet returns mkdir, env step, rsync, install and restart commands", () => {
   const commands = strategies.MyDevilNet({
     username: "user",
     host: "s1.mydevil.net",
@@ -108,69 +119,145 @@ test("MyDevilNet returns mkdir, env check, rsync, env keys check, install and re
   assert.deepStrictEqual(commands, [
     `ssh -l user s1.mydevil.net 'mkdir -p ~/domains/buxlabs.pl/public_nodejs'`,
     {
-      command: `ssh -l user s1.mydevil.net 'test -f ~/domains/buxlabs.pl/public_nodejs/.env' || (scp .env.example user@s1.mydevil.net:~/domains/buxlabs.pl/public_nodejs/.env && ([ -t 0 ] && ssh -t -l user s1.mydevil.net 'cd ~/domains/buxlabs.pl/public_nodejs && \${EDITOR:-nano} .env' || (echo "seeded ~/domains/buxlabs.pl/public_nodejs/.env from .env.example - fill in real values on the server and redeploy" >&2; exit 1)))`,
-      interactive: true,
+      description: `ensure ~/domains/buxlabs.pl/public_nodejs/.env is complete`,
+      execute: ensureEnv,
     },
     `rsync -avz --delete -e ssh ${DEFAULT_EXCLUDE_FLAGS} ./ user@s1.mydevil.net:~/domains/buxlabs.pl/public_nodejs`,
-    {
-      command: `ssh -l user s1.mydevil.net 'cd ~/domains/buxlabs.pl/public_nodejs && missing=$(for key in $(grep -E "^[A-Za-z_][A-Za-z0-9_]*=" .env.example 2>/dev/null | cut -d= -f1); do grep -q "^$key=" .env || echo $key; done); if [ -n "$missing" ]; then for key in $missing; do grep "^$key=" .env.example >> .env; done; echo "added missing keys to ~/domains/buxlabs.pl/public_nodejs/.env: $missing - fill in real values" >&2; exit 1; fi' || ([ -t 0 ] && ssh -t -l user s1.mydevil.net 'cd ~/domains/buxlabs.pl/public_nodejs && \${EDITOR:-nano} .env' || (echo "filled ~/domains/buxlabs.pl/public_nodejs/.env with missing keys from .env.example - fill in real values on the server and redeploy" >&2; exit 1))`,
-      interactive: true,
-    },
     `ssh -l user s1.mydevil.net 'cd ~/domains/buxlabs.pl/public_nodejs && npm install --production --omit=dev --silent --no-optional'`,
     `ssh -l user s1.mydevil.net 'devil www restart buxlabs.pl'`,
   ])
 })
 
-test("the env keys check appends missing keys and fails, then passes once complete", (t) => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "boxship-drift-"))
-  fs.writeFileSync(path.join(dir, ".env.example"), "# example\nKEY=value\nNEW_KEY=other\n")
-  fs.writeFileSync(path.join(dir, ".env"), "KEY=real\n")
-  const commands = strategies.MyDevilNet({
-    username: "user",
-    host: "example.com",
-    domain: "example.com",
-    location: dir,
+test("parseKeys extracts key names from env file content", () => {
+  const content = "# comment\n\nKEY=value\n  SPACED_KEY = value\nNO_VALUE=\nlower_key=x\n1BAD=x\nnot a key line\n"
+  assert.deepStrictEqual(parseKeys(content), ["KEY", "SPACED_KEY", "NO_VALUE", "lower_key"])
+})
+
+test("parseKeys accepts bare key names as produced by cut", () => {
+  assert.deepStrictEqual(parseKeys("# comment\nKEY\nOTHER_KEY\n"), ["KEY", "OTHER_KEY"])
+})
+
+test("parseKeys handles CRLF line endings and a byte order mark", () => {
+  assert.deepStrictEqual(parseKeys("\uFEFFKEY=value\r\nOTHER=x\r\n"), ["KEY", "OTHER"])
+})
+
+test("missingEnvLines returns lines without CRLF line endings", () => {
+  assert.deepStrictEqual(missingEnvLines("KEY=value\r\nNEW=x\r\n", ["KEY"]), ["NEW=x"])
+})
+
+test("missingEnvLines returns example lines whose keys are absent", () => {
+  const example = "# comment\nKEY=value\nNEW_KEY=other\nEMPTY=\n"
+  assert.deepStrictEqual(missingEnvLines(example, ["KEY"]), ["NEW_KEY=other", "EMPTY="])
+})
+
+test("missingEnvLines returns nothing when all keys are present", () => {
+  assert.deepStrictEqual(missingEnvLines("KEY=value\n", ["KEY", "EXTRA"]), [])
+})
+
+test("missingEnvLines ignores comments and malformed lines", () => {
+  assert.deepStrictEqual(missingEnvLines("# NOT_A_KEY=1\nnot a key\n1BAD=x\n", []), [])
+})
+
+function createEnvDir(files) {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "boxship-env-"))
+  for (const [name, content] of Object.entries(files)) {
+    fs.writeFileSync(path.join(dir, name), content)
+  }
+  return dir
+}
+
+function localExec(dir) {
+  return (command, options) =>
+    execSync(
+      command
+        .replaceAll("ssh -l user example.com ", "sh -c ")
+        .replaceAll("scp .env.example user@example.com:", "cp .env.example "),
+      { ...options, cwd: dir }
+    )
+}
+
+function createEnvTarget(dir) {
+  return { username: "user", host: "example.com", domain: "example.com", location: dir }
+}
+
+test("ensureEnv seeds .env from .env.example on a first deploy", (t) => {
+  const dir = createEnvDir({ ".env.example": "KEY=value\n" })
+  const cwd = process.cwd()
+  process.chdir(dir)
+  t.after(() => process.chdir(cwd))
+  t.mock.method(console, "log", () => {})
+  assert.throws(
+    () => ensureEnv(createEnvTarget(dir), { exec: localExec(dir) }),
+    /fill in real values in .* and redeploy/
+  )
+  assert.strictEqual(fs.readFileSync(path.join(dir, ".env"), "utf8"), "KEY=value\n")
+})
+
+test("ensureEnv appends missing keys to an existing .env", (t) => {
+  const dir = createEnvDir({
+    ".env.example": "# example\nKEY=value\nNEW_KEY=other\n",
+    ".env": "KEY=real\n",
   })
-  const check = commands[3].command.replaceAll("ssh -l user example.com ", "sh -c ")
-  assert.throws(() => run(check), /added missing keys to .*: NEW_KEY/)
+  const cwd = process.cwd()
+  process.chdir(dir)
+  t.after(() => process.chdir(cwd))
+  const log = t.mock.method(console, "log", () => {})
+  assert.throws(
+    () => ensureEnv(createEnvTarget(dir), { exec: localExec(dir) }),
+    /fill in real values in .* and redeploy/
+  )
+  assert.strictEqual(
+    fs.readFileSync(path.join(dir, ".env"), "utf8"),
+    "KEY=real\n\nNEW_KEY=other\n"
+  )
+  assert.match(log.mock.calls[0].arguments[0], /added missing keys to .*: NEW_KEY/)
+})
+
+test("ensureEnv appends cleanly when .env has no trailing newline", (t) => {
+  const dir = createEnvDir({
+    ".env.example": "KEY=value\nNEW_KEY=other\n",
+    ".env": "KEY=real",
+  })
+  const cwd = process.cwd()
+  process.chdir(dir)
+  t.after(() => process.chdir(cwd))
+  t.mock.method(console, "log", () => {})
+  assert.throws(
+    () => ensureEnv(createEnvTarget(dir), { exec: localExec(dir) }),
+    /fill in real values in .* and redeploy/
+  )
   assert.strictEqual(
     fs.readFileSync(path.join(dir, ".env"), "utf8"),
     "KEY=real\nNEW_KEY=other\n"
   )
-  assert.doesNotThrow(() => run(check))
 })
 
-test("the env keys check passes when there is no .env.example", (t) => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "boxship-drift-"))
-  fs.writeFileSync(path.join(dir, ".env"), "KEY=real\n")
-  const commands = strategies.MyDevilNet({
-    username: "user",
-    host: "example.com",
-    domain: "example.com",
-    location: dir,
-  })
-  const check = commands[3].command.replaceAll("ssh -l user example.com ", "sh -c ")
-  assert.doesNotThrow(() => run(check))
-})
-
-test("the env check seeds .env from .env.example and fails, then passes once .env exists", (t) => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "boxship-env-"))
-  fs.writeFileSync(path.join(dir, ".env.example"), "KEY=value\n")
-  const commands = strategies.MyDevilNet({
-    username: "user",
-    host: "example.com",
-    domain: "example.com",
-    location: dir,
-  })
-  const check = commands[1].command
-    .replaceAll("ssh -l user example.com ", "sh -c ")
-    .replaceAll("scp .env.example user@example.com:", "cp .env.example ")
+test("ensureEnv does nothing when the project has no .env.example", (t) => {
+  const dir = createEnvDir({})
   const cwd = process.cwd()
   process.chdir(dir)
   t.after(() => process.chdir(cwd))
-  assert.throws(() => run(check), /seeded .* from \.env\.example/)
-  assert.strictEqual(fs.readFileSync(path.join(dir, ".env"), "utf8"), "KEY=value\n")
-  assert.doesNotThrow(() => run(check))
+  assert.doesNotThrow(() => ensureEnv(createEnvTarget(dir), { exec: localExec(dir) }))
+  assert.strictEqual(fs.existsSync(path.join(dir, ".env")), false)
+})
+
+test("ensureEnv passes silently when .env has all the keys", (t) => {
+  const dir = createEnvDir({
+    ".env.example": "KEY=value\nOTHER=x\n",
+    ".env": "OTHER=real\nKEY=real\nEXTRA=server-only\n",
+  })
+  const cwd = process.cwd()
+  process.chdir(dir)
+  t.after(() => process.chdir(cwd))
+  assert.doesNotThrow(() => ensureEnv(createEnvTarget(dir), { exec: localExec(dir) }))
+})
+
+test("ensureEnv passes silently when there is no local .env.example", (t) => {
+  const dir = createEnvDir({ ".env": "KEY=real\n" })
+  const cwd = process.cwd()
+  process.chdir(dir)
+  t.after(() => process.chdir(cwd))
+  assert.doesNotThrow(() => ensureEnv(createEnvTarget(dir), { exec: localExec(dir) }))
 })
 
 test("MyDevilNet uses a custom npm binary when given", () => {
@@ -181,7 +268,7 @@ test("MyDevilNet uses a custom npm binary when given", () => {
     location: "~/domains/buxlabs.pl/public_nodejs",
     npm: "npm22",
   })
-  assert.match(commands[4], /npm22 install/)
+  assert.match(commands[3], /npm22 install/)
 })
 
 function createConfigDir(content) {
