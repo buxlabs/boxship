@@ -121,15 +121,27 @@ function load(cwd, name) {
   return target
 }
 
+function run(command, verbose) {
+  try {
+    execSync(command, { stdio: verbose ? "inherit" : "pipe" })
+  } catch (error) {
+    const output = [error.stderr, error.stdout]
+      .map((stream) => (stream ? stream.toString().trim() : ""))
+      .filter(Boolean)
+      .join("\n")
+    throw new Error([`command failed: ${command}`, output].filter(Boolean).join("\n"))
+  }
+}
+
 function deploy(target, { dryRun = false, verbose = false } = {}) {
   for (const command of strategies[target.strategy](target)) {
     if (verbose || dryRun) {
       console.log(command)
     }
     if (!dryRun) {
-      execSync(command, { stdio: verbose ? "inherit" : "pipe" })
+      run(command, verbose)
     }
   }
 }
 
-module.exports = { CONFIG_FILENAME, strategies, load, deploy }
+module.exports = { CONFIG_FILENAME, strategies, load, deploy, run }

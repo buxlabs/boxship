@@ -3,7 +3,7 @@ const assert = require("node:assert")
 const fs = require("fs")
 const os = require("os")
 const path = require("path")
-const { CONFIG_FILENAME, strategies, load } = require("./boxship")
+const { CONFIG_FILENAME, strategies, load, run } = require("./boxship")
 
 const DEFAULT_EXCLUDE_FLAGS = `--exclude='.git' --exclude='.env' --exclude='.vscode' --exclude='.idea' --exclude='.DS_Store' --exclude='node_modules' --exclude='test' --exclude='coverage' --exclude='boxship.config.json'`
 
@@ -218,6 +218,31 @@ test("load throws when the port is not an integer", () => {
     targets: { web: { ...target, port: "2222" } },
   })
   assert.throws(() => load(dir), /"port" must be an integer/)
+})
+
+test("run executes a command without throwing on success", () => {
+  assert.doesNotThrow(() => run(`node -e "process.exit(0)"`))
+})
+
+test("run includes the failing command and its stderr in the error", () => {
+  assert.throws(
+    () => run(`node -e "console.error('remote error'); process.exit(1)"`),
+    (error) => {
+      assert.match(error.message, /command failed: node -e/)
+      assert.match(error.message, /remote error/)
+      return true
+    }
+  )
+})
+
+test("run includes stdout of the failing command in the error", () => {
+  assert.throws(
+    () => run(`node -e "console.log('some output'); process.exit(1)"`),
+    (error) => {
+      assert.match(error.message, /some output/)
+      return true
+    }
+  )
 })
 
 test("load accepts locations with tildes, dots and dashes", () => {
