@@ -98,7 +98,7 @@ test("Static does not duplicate excludes already in the defaults", () => {
   )
 })
 
-test("MyDevilNet returns mkdir, env check, rsync, install and restart commands", () => {
+test("MyDevilNet returns mkdir, env check, rsync, env keys check, install and restart commands", () => {
   const commands = strategies.MyDevilNet({
     username: "user",
     host: "s1.mydevil.net",
@@ -112,9 +112,45 @@ test("MyDevilNet returns mkdir, env check, rsync, install and restart commands",
       interactive: true,
     },
     `rsync -avz --delete -e ssh ${DEFAULT_EXCLUDE_FLAGS} ./ user@s1.mydevil.net:~/domains/buxlabs.pl/public_nodejs`,
+    {
+      command: `ssh -l user s1.mydevil.net 'cd ~/domains/buxlabs.pl/public_nodejs && missing=$(for key in $(grep -E "^[A-Za-z_][A-Za-z0-9_]*=" .env.example 2>/dev/null | cut -d= -f1); do grep -q "^$key=" .env || echo $key; done); if [ -n "$missing" ]; then for key in $missing; do grep "^$key=" .env.example >> .env; done; echo "added missing keys to ~/domains/buxlabs.pl/public_nodejs/.env: $missing - fill in real values" >&2; exit 1; fi' || ([ -t 0 ] && ssh -t -l user s1.mydevil.net 'cd ~/domains/buxlabs.pl/public_nodejs && \${EDITOR:-nano} .env' || (echo "filled ~/domains/buxlabs.pl/public_nodejs/.env with missing keys from .env.example - fill in real values on the server and redeploy" >&2; exit 1))`,
+      interactive: true,
+    },
     `ssh -l user s1.mydevil.net 'cd ~/domains/buxlabs.pl/public_nodejs && npm install --production --omit=dev --silent --no-optional'`,
     `ssh -l user s1.mydevil.net 'devil www restart buxlabs.pl'`,
   ])
+})
+
+test("the env keys check appends missing keys and fails, then passes once complete", (t) => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "boxship-drift-"))
+  fs.writeFileSync(path.join(dir, ".env.example"), "# example\nKEY=value\nNEW_KEY=other\n")
+  fs.writeFileSync(path.join(dir, ".env"), "KEY=real\n")
+  const commands = strategies.MyDevilNet({
+    username: "user",
+    host: "example.com",
+    domain: "example.com",
+    location: dir,
+  })
+  const check = commands[3].command.replaceAll("ssh -l user example.com ", "sh -c ")
+  assert.throws(() => run(check), /added missing keys to .*: NEW_KEY/)
+  assert.strictEqual(
+    fs.readFileSync(path.join(dir, ".env"), "utf8"),
+    "KEY=real\nNEW_KEY=other\n"
+  )
+  assert.doesNotThrow(() => run(check))
+})
+
+test("the env keys check passes when there is no .env.example", (t) => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "boxship-drift-"))
+  fs.writeFileSync(path.join(dir, ".env"), "KEY=real\n")
+  const commands = strategies.MyDevilNet({
+    username: "user",
+    host: "example.com",
+    domain: "example.com",
+    location: dir,
+  })
+  const check = commands[3].command.replaceAll("ssh -l user example.com ", "sh -c ")
+  assert.doesNotThrow(() => run(check))
 })
 
 test("the env check seeds .env from .env.example and fails, then passes once .env exists", (t) => {
@@ -145,7 +181,7 @@ test("MyDevilNet uses a custom npm binary when given", () => {
     location: "~/domains/buxlabs.pl/public_nodejs",
     npm: "npm22",
   })
-  assert.match(commands[3], /npm22 install/)
+  assert.match(commands[4], /npm22 install/)
 })
 
 function createConfigDir(content) {

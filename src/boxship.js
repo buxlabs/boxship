@@ -43,13 +43,25 @@ const copy = (target) =>
     `${target.source || "./"} ${target.username}@${target.host}:${target.location}`,
   ].join(" ")
 
+const editEnv = (target) =>
+  `ssh -t -l ${target.username}${target.port ? ` -p ${target.port}` : ""} ${target.host} 'cd ${target.location} && \${EDITOR:-nano} .env'`
+
+const abortWith = (message) => `(echo "${message}" >&2; exit 1)`
+
 const ensureEnv = (target) => {
   const seed = `scp ${target.port ? `-P ${target.port} ` : ""}.env.example ${target.username}@${target.host}:${target.location}/.env`
-  const edit = `ssh -t -l ${target.username}${target.port ? ` -p ${target.port}` : ""} ${target.host} 'cd ${target.location} && \${EDITOR:-nano} .env'`
   const message = `seeded ${target.location}/.env from .env.example - fill in real values on the server and redeploy`
-  const abort = `(echo "${message}" >&2; exit 1)`
   return {
-    command: `${ssh(target, `test -f ${target.location}/.env`)} || (${seed} && ([ -t 0 ] && ${edit} || ${abort}))`,
+    command: `${ssh(target, `test -f ${target.location}/.env`)} || (${seed} && ([ -t 0 ] && ${editEnv(target)} || ${abortWith(message)}))`,
+    interactive: true,
+  }
+}
+
+const ensureEnvKeys = (target) => {
+  const detect = `cd ${target.location} && missing=$(for key in $(grep -E "^[A-Za-z_][A-Za-z0-9_]*=" .env.example 2>/dev/null | cut -d= -f1); do grep -q "^$key=" .env || echo $key; done); if [ -n "$missing" ]; then for key in $missing; do grep "^$key=" .env.example >> .env; done; echo "added missing keys to ${target.location}/.env: $missing - fill in real values" >&2; exit 1; fi`
+  const message = `filled ${target.location}/.env with missing keys from .env.example - fill in real values on the server and redeploy`
+  return {
+    command: `${ssh(target, detect)} || ([ -t 0 ] && ${editEnv(target)} || ${abortWith(message)})`,
     interactive: true,
   }
 }
@@ -63,6 +75,7 @@ const strategies = {
     ssh(target, `mkdir -p ${target.location}`),
     ensureEnv(target),
     copy(target),
+    ensureEnvKeys(target),
     ssh(
       target,
       `cd ${target.location} && ${target.npm || "npm"} install --production --omit=dev --silent --no-optional`
