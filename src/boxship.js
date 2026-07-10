@@ -25,6 +25,7 @@ const DEFAULT_EXCLUDES = [
   "test",
   "coverage",
   CONFIG_FILENAME,
+  ".rsync-partial",
 ]
 
 const excludeList = (exclude) =>
@@ -42,7 +43,7 @@ const ssh = (target, command) =>
 
 const copy = (target) =>
   [
-    `rsync -avz --delete -e ${target.port ? `'ssh -p ${target.port}'` : "ssh"}`,
+    `rsync -avz --partial-dir=.rsync-partial --delete -e ${target.port ? `'ssh -p ${target.port}'` : "ssh"}`,
     ...excludes(target.exclude),
     `${target.source || "./"} ${target.username}@${target.host}:${target.location}`,
   ].join(" ")
@@ -252,7 +253,11 @@ async function verify(target, { attempts = 3, delay = 5000 } = {}) {
 
 function run(command, { inherit = false, input } = {}, exec = execSync) {
   try {
-    return exec(command, { stdio: inherit ? "inherit" : "pipe", input })
+    return exec(command, {
+      stdio: inherit ? "inherit" : "pipe",
+      input,
+      maxBuffer: 64 * 1024 * 1024,
+    })
   } catch (error) {
     const output = [error.stderr, error.stdout]
       .map((stream) => (stream ? stream.toString().trim() : ""))

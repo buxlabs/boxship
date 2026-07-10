@@ -8,7 +8,7 @@ const { CONFIG_FILENAME } = require("./boxship")
 
 const BIN = path.join(__dirname, "..", "bin", "boxship.js")
 
-const DEFAULT_EXCLUDE_FLAGS = `--exclude='.git' --exclude='.env' --exclude='.vscode' --exclude='.idea' --exclude='.DS_Store' --exclude='node_modules' --exclude='test' --exclude='coverage' --exclude='boxship.config.json'`
+const DEFAULT_EXCLUDE_FLAGS = `--exclude='.git' --exclude='.env' --exclude='.vscode' --exclude='.idea' --exclude='.DS_Store' --exclude='node_modules' --exclude='test' --exclude='coverage' --exclude='boxship.config.json' --exclude='.rsync-partial'`
 
 function run(args, config) {
   const cwd = fs.mkdtempSync(path.join(os.tmpdir(), "boxship-cli-"))
@@ -64,7 +64,7 @@ test("it prints the deployment commands in dry-run mode", () => {
   assert.deepStrictEqual(result.stdout.trim().split("\n"), [
     `ssh -l user s1.mydevil.net 'mkdir -p ~/domains/example.com/public_nodejs'`,
     `# ensure ~/domains/example.com/public_nodejs/.env is complete`,
-    `rsync -avz --delete -e ssh ${DEFAULT_EXCLUDE_FLAGS} --exclude='uploads' ./ user@s1.mydevil.net:~/domains/example.com/public_nodejs`,
+    `rsync -avz --partial-dir=.rsync-partial --delete -e ssh ${DEFAULT_EXCLUDE_FLAGS} --exclude='uploads' ./ user@s1.mydevil.net:~/domains/example.com/public_nodejs`,
     `ssh -l user s1.mydevil.net 'cd ~/domains/example.com/public_nodejs && npm install --production --omit=dev --silent --no-optional'`,
     `ssh -l user s1.mydevil.net 'devil www restart example.com'`,
   ])
@@ -75,7 +75,7 @@ test("it prints each command once in verbose dry-run mode", () => {
   assert.strictEqual(result.status, 0)
   assert.deepStrictEqual(result.stdout.trim().split("\n"), [
     `ssh -l user -p 2222 staging.example.com 'mkdir -p ~/public'`,
-    `rsync -avz --delete -e 'ssh -p 2222' ${DEFAULT_EXCLUDE_FLAGS} ./ user@staging.example.com:~/public`,
+    `rsync -avz --partial-dir=.rsync-partial --delete -e 'ssh -p 2222' ${DEFAULT_EXCLUDE_FLAGS} ./ user@staging.example.com:~/public`,
   ])
 })
 
@@ -84,7 +84,7 @@ test("it deploys the only target when no name is given", () => {
     targets: { production: config.targets.staging },
   })
   assert.strictEqual(result.status, 0)
-  assert.match(result.stdout, /rsync -avz --delete -e 'ssh -p 2222'/)
+  assert.match(result.stdout, /rsync -avz --partial-dir=.rsync-partial --delete -e 'ssh -p 2222'/)
 })
 
 test("it fails when no name is given and multiple targets exist", () => {

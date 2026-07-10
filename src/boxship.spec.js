@@ -17,7 +17,7 @@ const {
   missingEnvLines,
 } = require("./boxship")
 
-const DEFAULT_EXCLUDE_FLAGS = `--exclude='.git' --exclude='.env' --exclude='.vscode' --exclude='.idea' --exclude='.DS_Store' --exclude='node_modules' --exclude='test' --exclude='coverage' --exclude='boxship.config.json'`
+const DEFAULT_EXCLUDE_FLAGS = `--exclude='.git' --exclude='.env' --exclude='.vscode' --exclude='.idea' --exclude='.DS_Store' --exclude='node_modules' --exclude='test' --exclude='coverage' --exclude='boxship.config.json' --exclude='.rsync-partial'`
 
 test("Static returns mkdir and rsync commands", () => {
   const commands = strategies.Static({
@@ -27,7 +27,7 @@ test("Static returns mkdir and rsync commands", () => {
   })
   assert.deepStrictEqual(commands, [
     `ssh -l user example.com 'mkdir -p ~/public'`,
-    `rsync -avz --delete -e ssh ${DEFAULT_EXCLUDE_FLAGS} ./ user@example.com:~/public`,
+    `rsync -avz --partial-dir=.rsync-partial --delete -e ssh ${DEFAULT_EXCLUDE_FLAGS} ./ user@example.com:~/public`,
   ])
 })
 
@@ -40,7 +40,7 @@ test("Static uses a custom port when given", () => {
   })
   assert.deepStrictEqual(commands, [
     `ssh -l user -p 2222 example.com 'mkdir -p ~/public'`,
-    `rsync -avz --delete -e 'ssh -p 2222' ${DEFAULT_EXCLUDE_FLAGS} ./ user@example.com:~/public`,
+    `rsync -avz --partial-dir=.rsync-partial --delete -e 'ssh -p 2222' ${DEFAULT_EXCLUDE_FLAGS} ./ user@example.com:~/public`,
   ])
 })
 
@@ -53,7 +53,7 @@ test("Static uses a custom source when given", () => {
   })
   assert.strictEqual(
     commands[1],
-    `rsync -avz --delete -e ssh ${DEFAULT_EXCLUDE_FLAGS} dist/ user@example.com:~/public`
+    `rsync -avz --partial-dir=.rsync-partial --delete -e ssh ${DEFAULT_EXCLUDE_FLAGS} dist/ user@example.com:~/public`
   )
 })
 
@@ -66,7 +66,7 @@ test("Static appends a custom exclude to the defaults", () => {
   })
   assert.strictEqual(
     commands[1],
-    `rsync -avz --delete -e ssh ${DEFAULT_EXCLUDE_FLAGS} --exclude='uploads' ./ user@example.com:~/public`
+    `rsync -avz --partial-dir=.rsync-partial --delete -e ssh ${DEFAULT_EXCLUDE_FLAGS} --exclude='uploads' ./ user@example.com:~/public`
   )
 })
 
@@ -79,7 +79,7 @@ test("Static appends multiple excludes given as a string", () => {
   })
   assert.strictEqual(
     commands[1],
-    `rsync -avz --delete -e ssh ${DEFAULT_EXCLUDE_FLAGS} --exclude='uploads' --exclude='tmp' ./ user@example.com:~/public`
+    `rsync -avz --partial-dir=.rsync-partial --delete -e ssh ${DEFAULT_EXCLUDE_FLAGS} --exclude='uploads' --exclude='tmp' ./ user@example.com:~/public`
   )
 })
 
@@ -92,7 +92,7 @@ test("Static appends multiple excludes given as an array", () => {
   })
   assert.strictEqual(
     commands[1],
-    `rsync -avz --delete -e ssh ${DEFAULT_EXCLUDE_FLAGS} --exclude='uploads' --exclude='tmp' ./ user@example.com:~/public`
+    `rsync -avz --partial-dir=.rsync-partial --delete -e ssh ${DEFAULT_EXCLUDE_FLAGS} --exclude='uploads' --exclude='tmp' ./ user@example.com:~/public`
   )
 })
 
@@ -105,7 +105,7 @@ test("Static does not duplicate excludes already in the defaults", () => {
   })
   assert.strictEqual(
     commands[1],
-    `rsync -avz --delete -e ssh ${DEFAULT_EXCLUDE_FLAGS} --exclude='uploads' ./ user@example.com:~/public`
+    `rsync -avz --partial-dir=.rsync-partial --delete -e ssh ${DEFAULT_EXCLUDE_FLAGS} --exclude='uploads' ./ user@example.com:~/public`
   )
 })
 
@@ -122,7 +122,7 @@ test("MyDevilNet returns mkdir, env step, rsync, install and restart commands", 
       description: `ensure ~/domains/buxlabs.pl/public_nodejs/.env is complete`,
       execute: ensureEnv,
     },
-    `rsync -avz --delete -e ssh ${DEFAULT_EXCLUDE_FLAGS} ./ user@s1.mydevil.net:~/domains/buxlabs.pl/public_nodejs`,
+    `rsync -avz --partial-dir=.rsync-partial --delete -e ssh ${DEFAULT_EXCLUDE_FLAGS} ./ user@s1.mydevil.net:~/domains/buxlabs.pl/public_nodejs`,
     `ssh -l user s1.mydevil.net 'cd ~/domains/buxlabs.pl/public_nodejs && npm install --production --omit=dev --silent --no-optional'`,
     `ssh -l user s1.mydevil.net 'devil www restart buxlabs.pl'`,
   ])
@@ -139,7 +139,7 @@ test("before and after hooks run around the copy on Static", () => {
   assert.deepStrictEqual(commands, [
     `ssh -l user example.com 'mkdir -p ~/public'`,
     `ssh -l user example.com 'cd ~/public && node prepare.js'`,
-    `rsync -avz --delete -e ssh ${DEFAULT_EXCLUDE_FLAGS} ./ user@example.com:~/public`,
+    `rsync -avz --partial-dir=.rsync-partial --delete -e ssh ${DEFAULT_EXCLUDE_FLAGS} ./ user@example.com:~/public`,
     `ssh -l user example.com 'cd ~/public && node cleanup.js'`,
     `ssh -l user example.com 'cd ~/public && node report.js'`,
   ])
@@ -423,6 +423,12 @@ test("run executes a command without throwing on success", () => {
   assert.doesNotThrow(() => run(`node -e "process.exit(0)"`))
 })
 
+test("run tolerates output larger than the default exec buffer", () => {
+  assert.doesNotThrow(() =>
+    run(`node -e "process.stdout.write('x'.repeat(4 * 1024 * 1024))"`)
+  )
+})
+
 test("run includes the failing command and its stderr in the error", () => {
   assert.throws(
     () => run(`node -e "console.error('remote error'); process.exit(1)"`),
@@ -469,7 +475,7 @@ test("diffCommand returns the rsync command in dry-run mode", () => {
   })
   assert.strictEqual(
     command,
-    `rsync -avzn --delete -e ssh ${DEFAULT_EXCLUDE_FLAGS} ./ user@example.com:~/public`
+    `rsync -avzn --partial-dir=.rsync-partial --delete -e ssh ${DEFAULT_EXCLUDE_FLAGS} ./ user@example.com:~/public`
   )
 })
 
