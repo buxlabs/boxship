@@ -1,20 +1,27 @@
 {
   "name": "boxship",
   "version": "1.7.0",
-  "description": "Deployment scripts",
+  "description": "Config-driven deployment CLI that ships projects over rsync/ssh",
   "main": "src/boxship.js",
+  "bin": "./bin/boxship.js",
+  "files": [
+    "bin",
+    "src/boxship.js"
+  ],
   "scripts": {
     "test": "node --test \"src/**/*.spec.js\"",
     "coverage": "node --test --experimental-test-coverage \"src/**/*.spec.js\""
   },
-  "bin": "./bin/boxship.js",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/buxlabs/boxship.git"
   },
   "keywords": [
     "deployment",
-    "kit"
+    "deploy",
+    "rsync",
+    "ssh",
+    "cli"
   ],
   "author": "Emil Ajdyna <emil@ajdyna.com>",
   "license": "MIT",

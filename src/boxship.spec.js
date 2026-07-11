@@ -9,6 +9,7 @@ const {
   CONFIG_FILENAME,
   strategies,
   load,
+  deploy,
   run,
   diffCommand,
   verify,
@@ -301,6 +302,79 @@ test("ensureEnv passes silently when there is no local .env.example", (t) => {
   assert.doesNotThrow(() => ensureEnv(createEnvTarget(dir), { exec: localExec(dir) }))
 })
 
+test("ensureEnv can be called without options", (t) => {
+  const dir = createEnvDir({})
+  const cwd = process.cwd()
+  process.chdir(dir)
+  t.after(() => process.chdir(cwd))
+  assert.doesNotThrow(() => ensureEnv(createEnvTarget(dir)))
+})
+
+test("ensureEnv propagates ssh failures when checking the remote .env", (t) => {
+  const dir = createEnvDir({ ".env.example": "KEY=value\n" })
+  const cwd = process.cwd()
+  process.chdir(dir)
+  t.after(() => process.chdir(cwd))
+  const exec = () => {
+    throw Object.assign(new Error("connection refused"), { status: 255 })
+  }
+  assert.throws(() => ensureEnv(createEnvTarget(dir), { exec }), /connection refused/)
+})
+
+test("ensureEnv opens the remote .env in an editor when run interactively", (t) => {
+  const dir = createEnvDir({ ".env.example": "KEY=value\n" })
+  const cwd = process.cwd()
+  process.chdir(dir)
+  t.after(() => process.chdir(cwd))
+  t.mock.method(console, "log", () => {})
+  const isTTY = process.stdin.isTTY
+  process.stdin.isTTY = true
+  t.after(() => {
+    process.stdin.isTTY = isTTY
+  })
+  const commands = []
+  const exec = (command, options) => {
+    commands.push(command)
+    if (command.startsWith("ssh -t")) {
+      return ""
+    }
+    return localExec(dir)(command, options)
+  }
+  assert.doesNotThrow(() => ensureEnv(createEnvTarget(dir), { exec }))
+  assert.strictEqual(
+    commands.at(-1),
+    `ssh -t -l user example.com 'cd ${dir} && \${EDITOR:-nano} .env'`
+  )
+  assert.strictEqual(fs.readFileSync(path.join(dir, ".env"), "utf8"), "KEY=value\n")
+})
+
+test("ensureEnv uses the configured port for scp and the editor", (t) => {
+  const dir = createEnvDir({ ".env.example": "KEY=value\n" })
+  const cwd = process.cwd()
+  process.chdir(dir)
+  t.after(() => process.chdir(cwd))
+  t.mock.method(console, "log", () => {})
+  const isTTY = process.stdin.isTTY
+  process.stdin.isTTY = true
+  t.after(() => {
+    process.stdin.isTTY = isTTY
+  })
+  const commands = []
+  const exec = (command) => {
+    commands.push(command)
+    if (command.includes("test -f")) {
+      throw Object.assign(new Error("no such file"), { status: 1 })
+    }
+    return ""
+  }
+  ensureEnv({ ...createEnvTarget(dir), port: 2222 }, { exec })
+  assert.strictEqual(commands[1], `scp -P 2222 .env.example user@example.com:${dir}/.env`)
+  assert.strictEqual(
+    commands[2],
+    `ssh -t -l user -p 2222 example.com 'cd ${dir} && \${EDITOR:-nano} .env'`
+  )
+})
+
 test("MyDevilNet uses a custom npm binary when given", () => {
   const commands = strategies.MyDevilNet({
     username: "user",
@@ -353,6 +427,18 @@ test("load throws when the config has no targets", () => {
   assert.throws(() => load(dir), /at least one target/)
 })
 
+test("load throws when the config has no targets key at all", () => {
+  const dir = createConfigDir({})
+  assert.throws(() => load(dir), /at least one target/)
+})
+
+test("load accepts hook commands without single quotes", () => {
+  const dir = createConfigDir({
+    targets: { web: { ...target, after: ["node cleanup.js"] } },
+  })
+  assert.deepStrictEqual(load(dir).target.after, ["node cleanup.js"])
+})
+
 test("load throws when no name is given and multiple targets exist", () => {
   const dir = createConfigDir({ targets: { production: target, staging: target } })
   assert.throws(() => load(dir), /pick one of: production, staging/)
@@ -379,6 +465,13 @@ test("load rejects a target name from the prototype chain", () => {
 test("load rejects a strategy name from the prototype chain", () => {
   const dir = createConfigDir({ targets: { web: { ...target, strategy: "constructor" } } })
   assert.throws(() => load(dir), /unknown strategy "constructor"/)
+})
+
+test("load throws when the strategy is missing", () => {
+  const dir = createConfigDir({
+    targets: { web: { username: "user", host: "example.com", location: "~/public" } },
+  })
+  assert.throws(() => load(dir), /"strategy" is required/)
 })
 
 test("load throws on an unknown strategy", () => {
@@ -450,6 +543,13 @@ test("run includes stdout of the failing command in the error", () => {
   )
 })
 
+test("run reports a failure even when the output was inherited", () => {
+  assert.throws(
+    () => run(`node -e "process.exit(1)"`, { inherit: true }),
+    /command failed: node -e/
+  )
+})
+
 test("load accepts locations with tildes, dots and dashes", () => {
   const dir = createConfigDir({
     targets: {
@@ -465,6 +565,13 @@ test("load accepts locations with tildes, dots and dashes", () => {
 test("load throws when the url is not http", () => {
   const dir = createConfigDir({ targets: { web: { ...target, url: "example.com" } } })
   assert.throws(() => load(dir), /"url" must start with http:\/\/ or https:\/\//)
+})
+
+test("load accepts a valid https url", () => {
+  const dir = createConfigDir({
+    targets: { web: { ...target, url: "https://example.com/health" } },
+  })
+  assert.strictEqual(load(dir).target.url, "https://example.com/health")
 })
 
 test("diffCommand returns the rsync command in dry-run mode", () => {
@@ -540,4 +647,29 @@ test("verify gives up after the configured attempts", async (t) => {
 
 test("verify does nothing when the target has no url", async () => {
   await assert.doesNotReject(() => verify({}))
+})
+
+test("verify reports fetch errors without a cause", async (t) => {
+  t.mock.method(globalThis, "fetch", async () => {
+    throw new Error("boom")
+  })
+  await assert.rejects(
+    () => verify({ url: "http://example.com/" }, { attempts: 1 }),
+    /verification failed: http:\/\/example\.com\/ - boom/
+  )
+})
+
+test("deploy runs commands and custom steps, then verifies the url", async (t) => {
+  const executed = []
+  strategies.Recording = () => [
+    `node -e "process.exit(0)"`,
+    { description: "custom step", execute: (target) => executed.push(target) },
+  ]
+  t.after(() => delete strategies.Recording)
+  const { server, url } = await createServer(200)
+  t.after(() => server.close())
+  t.mock.method(console, "log", () => {})
+  const target = { strategy: "Recording", url }
+  await assert.doesNotReject(() => deploy(target))
+  assert.deepStrictEqual(executed, [target])
 })

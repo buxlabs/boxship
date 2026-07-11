@@ -237,17 +237,15 @@ async function verify(target, { attempts = 3, delay = 5000 } = {}) {
   if (!target.url) {
     return
   }
-  for (let count = 1; ; count++) {
-    try {
-      const response = await check(target.url)
-      console.log(`${target.url} responded with ${response.status}`)
-      return
-    } catch (error) {
-      if (count === attempts) {
-        throw error
-      }
-      await sleep(delay)
+  try {
+    const response = await check(target.url)
+    console.log(`${target.url} responded with ${response.status}`)
+  } catch (error) {
+    if (attempts <= 1) {
+      throw error
     }
+    await sleep(delay)
+    return verify(target, { attempts: attempts - 1, delay })
   }
 }
 

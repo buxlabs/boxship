@@ -10,13 +10,23 @@ const BIN = path.join(__dirname, "..", "bin", "boxship.js")
 
 const DEFAULT_EXCLUDE_FLAGS = `--exclude='.git' --exclude='.env' --exclude='.vscode' --exclude='.idea' --exclude='.DS_Store' --exclude='node_modules' --exclude='test' --exclude='coverage' --exclude='boxship.config.json' --exclude='.rsync-partial'`
 
-function run(args, config) {
+function run(args, config, env) {
   const cwd = fs.mkdtempSync(path.join(os.tmpdir(), "boxship-cli-"))
   if (config !== undefined) {
     const content = typeof config === "string" ? config : JSON.stringify(config)
     fs.writeFileSync(path.join(cwd, CONFIG_FILENAME), content)
   }
-  return spawnSync(process.execPath, [BIN, ...args], { cwd, encoding: "utf8" })
+  return spawnSync(process.execPath, [BIN, ...args], { cwd, encoding: "utf8", env })
+}
+
+function stubRemoteCommands() {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "boxship-stub-"))
+  for (const name of ["ssh", "rsync"]) {
+    const file = path.join(dir, name)
+    fs.writeFileSync(file, `#!/bin/sh\necho "${name} $@"\n`)
+    fs.chmodSync(file, 0o755)
+  }
+  return { ...process.env, PATH: `${dir}:${process.env.PATH}` }
 }
 
 const config = {
@@ -108,6 +118,19 @@ test("it fails on an invalid target with validation errors", () => {
   assert.match(result.stderr, /unknown strategy "static", available: Static, MyDevilNet/)
   assert.match(result.stderr, /"username" is required/)
   assert.match(result.stderr, /"location" is required/)
+})
+
+test("it shows the transfer preview with --diff without deploying", () => {
+  const result = run(["staging", "--diff"], config, stubRemoteCommands())
+  assert.strictEqual(result.status, 0)
+  assert.match(result.stdout, /rsync -avzn/)
+  assert.doesNotMatch(result.stdout, /deployed/)
+})
+
+test("it deploys and prints a summary with the elapsed time", () => {
+  const result = run(["staging"], config, stubRemoteCommands())
+  assert.strictEqual(result.status, 0)
+  assert.match(result.stdout, /^deployed staging in \d+\.\ds$/m)
 })
 
 test("it fails on an unknown flag", () => {
