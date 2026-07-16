@@ -187,16 +187,20 @@ function validate(target) {
   return errors
 }
 
-function load(cwd, name) {
-  const filepath = path.join(cwd, CONFIG_FILENAME)
+function load(cwd, name, configPath = CONFIG_FILENAME) {
+  let filepath = path.resolve(cwd, configPath)
+  if (fs.existsSync(filepath) && fs.statSync(filepath).isDirectory()) {
+    filepath = path.join(filepath, CONFIG_FILENAME)
+  }
+  const label = path.relative(cwd, filepath) || filepath
   if (!fs.existsSync(filepath)) {
-    throw new Error(`missing config file: ${CONFIG_FILENAME}`)
+    throw new Error(`missing config file: ${label}`)
   }
   let config
   try {
     config = JSON.parse(fs.readFileSync(filepath, "utf8"))
   } catch (error) {
-    throw new Error(`invalid json in ${CONFIG_FILENAME}: ${error.message}`)
+    throw new Error(`invalid json in ${label}: ${error.message}`)
   }
   const names = Object.keys(config.targets || {})
   if (names.length === 0) {

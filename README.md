@@ -70,6 +70,7 @@ The target name can be omitted when the config defines exactly one target.
 
 ### CLI Options
 
+- `--config` – Path to the config file or its directory, resolved from the current directory (defaults to `boxship.config.json` in the current directory); useful when deploying from a directory that doesn't hold the config, e.g. `boxship --config ..`
 - `--diff` – Show which files would be transferred and deleted, without deploying
 - `--dry-run` – Print the commands without executing them
 - `--verbose` – Log each command and its output

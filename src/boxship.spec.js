@@ -417,6 +417,33 @@ test("load throws when the config file is missing", () => {
   assert.throws(() => load(dir), /missing config file/)
 })
 
+test("load reads the config from a custom file path", () => {
+  const configDir = createConfigDir({ targets: { production: target } })
+  const cwd = createConfigDir()
+  const filepath = path.join(configDir, CONFIG_FILENAME)
+  assert.deepStrictEqual(load(cwd, undefined, filepath), { name: "production", target })
+})
+
+test("load reads the config from a custom directory path", () => {
+  const configDir = createConfigDir({ targets: { production: target } })
+  const cwd = createConfigDir()
+  assert.deepStrictEqual(load(cwd, undefined, configDir), { name: "production", target })
+})
+
+test("load resolves a relative custom path against the working directory", () => {
+  const configDir = createConfigDir({ targets: { production: target } })
+  const cwd = fs.mkdtempSync(path.join(configDir, "public-"))
+  assert.deepStrictEqual(load(cwd, undefined, ".."), { name: "production", target })
+})
+
+test("load throws with the custom path when the config file is missing", () => {
+  const cwd = createConfigDir()
+  assert.throws(
+    () => load(cwd, undefined, "../shared/boxship.config.json"),
+    /missing config file: \.\.\/shared\/boxship\.config\.json/
+  )
+})
+
 test("load throws when the config file is not valid json", () => {
   const dir = createConfigDir("{ not json")
   assert.throws(() => load(dir), /invalid json/)

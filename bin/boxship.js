@@ -9,6 +9,8 @@ deploys the target defined in ${CONFIG_FILENAME} (the target name
 can be omitted when the config defines exactly one target)
 
 options:
+  --config    path to the config file or its directory
+              (defaults to ${CONFIG_FILENAME} in the current directory)
   --diff      show which files would be transferred and deleted
   --dry-run   print the commands without executing them
   --verbose   log each command and its output
@@ -19,6 +21,7 @@ let args
 try {
   args = parseArgs({
     options: {
+      config: { type: "string" },
       diff: { type: "boolean", default: false },
       "dry-run": { type: "boolean", default: false },
       verbose: { type: "boolean", default: false },
@@ -37,7 +40,7 @@ if (args.values.help) {
 }
 
 async function main() {
-  const { name, target } = load(process.cwd(), args.positionals[0])
+  const { name, target } = load(process.cwd(), args.positionals[0], args.values.config)
   if (args.values.diff) {
     run(diffCommand(target), { inherit: true })
     return

@@ -89,6 +89,23 @@ test("it prints each command once in verbose dry-run mode", () => {
   ])
 })
 
+test("it loads the config from a custom --config path", () => {
+  const configDir = fs.mkdtempSync(path.join(os.tmpdir(), "boxship-config-"))
+  fs.writeFileSync(
+    path.join(configDir, CONFIG_FILENAME),
+    JSON.stringify({ targets: { staging: config.targets.staging } })
+  )
+  const result = run(["--dry-run", "--config", path.join(configDir, CONFIG_FILENAME)])
+  assert.strictEqual(result.status, 0)
+  assert.match(result.stdout, /rsync -avz --partial-dir=.rsync-partial --delete -e 'ssh -p 2222'/)
+})
+
+test("it fails with the custom path when the --config file is missing", () => {
+  const result = run(["--dry-run", "--config", "../shared/boxship.config.json"])
+  assert.strictEqual(result.status, 1)
+  assert.match(result.stderr, /missing config file: \.\.\/shared\/boxship\.config\.json/)
+})
+
 test("it deploys the only target when no name is given", () => {
   const result = run(["--dry-run"], {
     targets: { production: config.targets.staging },
