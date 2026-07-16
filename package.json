@@ -6,7 +6,8 @@
   "bin": "./bin/boxship.js",
   "files": [
     "bin",
-    "src/boxship.js"
+    "src/boxship.js",
+    "boxship.schema.json"
   ],
   "scripts": {
     "test": "node --test \"src/**/*.spec.js\"",

@@ -13,6 +13,12 @@
 - Zero dependencies
 - Verbose logging for troubleshooting
 
+## Requirements
+
+- macOS, Linux or WSL (Windows is not supported natively)
+- `ssh` and `rsync` available on the `PATH` (preinstalled on most systems; boxship checks before deploying)
+- Node.js 20 or newer
+
 ## Quick Start
 
 Install Boxship as a development dependency:
@@ -21,10 +27,11 @@ Install Boxship as a development dependency:
 npm install boxship --save-dev
 ```
 
-Create a `boxship.config.json` in your project root:
+Create a `boxship.config.json` in your project root — `npx boxship init` scaffolds one:
 
 ```json
 {
+  "$schema": "https://unpkg.com/boxship/boxship.schema.json",
   "targets": {
     "production": {
       "strategy": "MyDevilNet",
@@ -64,9 +71,10 @@ npm run deploy
 
 ```bash
 boxship [target] [options]
+boxship init [options]
 ```
 
-The target name can be omitted when the config defines exactly one target.
+The target name can be omitted when the config defines exactly one target. `boxship init` creates a starter config (respecting `--config` for the location) and refuses to overwrite an existing one.
 
 ### CLI Options
 
@@ -91,6 +99,8 @@ The target name can be omitted when the config defines exactly one target.
 - `before` / `after` – remote commands (a string or an array) run in `location` over ssh, before the files are synced and after the deploy finishes; use these for migrations, cache clears, or custom restarts instead of changing boxship — single quotes are not allowed in hook commands
 
 Values are passed to `ssh` and `rsync` as-is, so they must not contain whitespace, quotes, or shell symbols — the config is validated and deploys are refused otherwise.
+
+The package ships a JSON schema (`boxship.schema.json`); keep the `$schema` line from the starter config to get autocomplete and validation in editors that support it.
 
 Deploys are incremental: files are synced with `rsync --delete`, so only changed files are transferred and files removed locally are removed from the server.
 

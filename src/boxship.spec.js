@@ -9,6 +9,8 @@ const {
   CONFIG_FILENAME,
   strategies,
   load,
+  init,
+  preflight,
   deploy,
   run,
   diffCommand,
@@ -434,6 +436,75 @@ test("load resolves a relative custom path against the working directory", () =>
   const configDir = createConfigDir({ targets: { production: target } })
   const cwd = fs.mkdtempSync(path.join(configDir, "public-"))
   assert.deepStrictEqual(load(cwd, undefined, ".."), { name: "production", target })
+})
+
+test("init creates a starter config that load accepts", () => {
+  const dir = createConfigDir()
+  const label = init(dir)
+  assert.strictEqual(label, CONFIG_FILENAME)
+  const { name, target: created } = load(dir)
+  assert.strictEqual(name, "production")
+  assert.strictEqual(created.strategy, "Static")
+})
+
+test("init writes the schema reference into the config", () => {
+  const dir = createConfigDir()
+  init(dir)
+  const config = JSON.parse(fs.readFileSync(path.join(dir, CONFIG_FILENAME), "utf8"))
+  assert.match(config.$schema, /boxship\.schema\.json$/)
+})
+
+test("init honors a custom config path", () => {
+  const configDir = createConfigDir()
+  const cwd = createConfigDir()
+  init(cwd, path.join(configDir, CONFIG_FILENAME))
+  assert.ok(fs.existsSync(path.join(configDir, CONFIG_FILENAME)))
+})
+
+test("init refuses to overwrite an existing config", () => {
+  const dir = createConfigDir({ targets: { production: target } })
+  assert.throws(() => init(dir), /boxship\.config\.json already exists/)
+})
+
+test("the starter config is valid against the published schema", () => {
+  const schema = JSON.parse(
+    fs.readFileSync(path.join(__dirname, "..", "boxship.schema.json"), "utf8")
+  )
+  const dir = createConfigDir()
+  init(dir)
+  const config = JSON.parse(fs.readFileSync(path.join(dir, CONFIG_FILENAME), "utf8"))
+  for (const key of Object.keys(config)) {
+    assert.ok(Object.hasOwn(schema.properties, key), `schema is missing "${key}"`)
+  }
+  const created = config.targets.production
+  for (const key of schema.definitions.target.required) {
+    assert.ok(Object.hasOwn(created, key), `starter target is missing "${key}"`)
+  }
+  for (const key of Object.keys(created)) {
+    assert.ok(
+      Object.hasOwn(schema.definitions.target.properties, key),
+      `schema is missing target option "${key}"`
+    )
+  }
+})
+
+test("preflight passes when ssh and rsync are available", () => {
+  const checked = []
+  const exec = (command) => checked.push(command)
+  assert.doesNotThrow(() => preflight(exec))
+  assert.deepStrictEqual(checked, ["command -v ssh", "command -v rsync"])
+})
+
+test("preflight throws listing the missing commands", () => {
+  const exec = (command) => {
+    if (command.includes("rsync")) {
+      throw new Error("not found")
+    }
+  }
+  assert.throws(() => preflight(exec), /missing required commands: rsync/)
+  assert.throws(() => preflight(() => {
+    throw new Error("not found")
+  }), /missing required commands: ssh, rsync/)
 })
 
 test("load throws with the custom path when the config file is missing", () => {

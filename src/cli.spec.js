@@ -56,6 +56,28 @@ test("it shows usage with --help", () => {
   assert.match(result.stdout, /--dry-run/)
 })
 
+test("it creates a starter config with init", () => {
+  const cwd = fs.mkdtempSync(path.join(os.tmpdir(), "boxship-cli-"))
+  const result = spawnSync(process.execPath, [BIN, "init"], { cwd, encoding: "utf8" })
+  assert.strictEqual(result.status, 0)
+  assert.match(result.stdout, /created boxship\.config\.json/)
+  const created = JSON.parse(fs.readFileSync(path.join(cwd, CONFIG_FILENAME), "utf8"))
+  assert.ok(created.targets.production)
+})
+
+test("it fails when init would overwrite an existing config", () => {
+  const result = run(["init"], config)
+  assert.strictEqual(result.status, 1)
+  assert.match(result.stderr, /boxship\.config\.json already exists/)
+})
+
+test("it fails with a preflight error when ssh and rsync are unavailable", () => {
+  const emptyDir = fs.mkdtempSync(path.join(os.tmpdir(), "boxship-empty-"))
+  const result = run(["staging"], config, { ...process.env, PATH: emptyDir })
+  assert.strictEqual(result.status, 1)
+  assert.match(result.stderr, /missing required commands: ssh, rsync/)
+})
+
 test("it fails when the config file is missing", () => {
   const result = run(["--dry-run"])
   assert.strictEqual(result.status, 1)

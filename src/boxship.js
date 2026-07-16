@@ -187,12 +187,53 @@ function validate(target) {
   return errors
 }
 
-function load(cwd, name, configPath = CONFIG_FILENAME) {
+function resolveConfigPath(cwd, configPath = CONFIG_FILENAME) {
   let filepath = path.resolve(cwd, configPath)
   if (fs.existsSync(filepath) && fs.statSync(filepath).isDirectory()) {
     filepath = path.join(filepath, CONFIG_FILENAME)
   }
-  const label = path.relative(cwd, filepath) || filepath
+  return { filepath, label: path.relative(cwd, filepath) || filepath }
+}
+
+const CONFIG_TEMPLATE = {
+  $schema: "https://unpkg.com/boxship/boxship.schema.json",
+  targets: {
+    production: {
+      strategy: "Static",
+      username: "user",
+      host: "example.com",
+      location: "~/public_html",
+    },
+  },
+}
+
+function init(cwd, configPath) {
+  const { filepath, label } = resolveConfigPath(cwd, configPath)
+  if (fs.existsSync(filepath)) {
+    throw new Error(`${label} already exists`)
+  }
+  fs.writeFileSync(filepath, JSON.stringify(CONFIG_TEMPLATE, null, 2) + "\n")
+  return label
+}
+
+function preflight(exec = execSync) {
+  const missing = ["ssh", "rsync"].filter((command) => {
+    try {
+      exec(`command -v ${command}`, { stdio: "pipe" })
+      return false
+    } catch (error) {
+      return true
+    }
+  })
+  if (missing.length > 0) {
+    throw new Error(
+      `missing required commands: ${missing.join(", ")} (boxship needs ssh and rsync on the PATH; supported on macOS, Linux and WSL)`
+    )
+  }
+}
+
+function load(cwd, name, configPath) {
+  const { filepath, label } = resolveConfigPath(cwd, configPath)
   if (!fs.existsSync(filepath)) {
     throw new Error(`missing config file: ${label}`)
   }
@@ -299,6 +340,8 @@ module.exports = {
   CONFIG_FILENAME,
   strategies,
   load,
+  init,
+  preflight,
   deploy,
   run,
   diffCommand,

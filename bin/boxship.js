@@ -1,12 +1,15 @@
 #!/usr/bin/env node
 
 const { parseArgs } = require("node:util")
-const { CONFIG_FILENAME, load, deploy, diffCommand, run } = require("../src/boxship")
+const { CONFIG_FILENAME, load, init, preflight, deploy, diffCommand, run } = require("../src/boxship")
 
 const usage = `usage: boxship [target] [options]
+       boxship init [options]
 
 deploys the target defined in ${CONFIG_FILENAME} (the target name
 can be omitted when the config defines exactly one target)
+
+boxship init creates a starter ${CONFIG_FILENAME}
 
 options:
   --config    path to the config file or its directory
@@ -40,7 +43,15 @@ if (args.values.help) {
 }
 
 async function main() {
+  if (args.positionals[0] === "init") {
+    const label = init(process.cwd(), args.values.config)
+    console.log(`created ${label} - edit it and run boxship`)
+    return
+  }
   const { name, target } = load(process.cwd(), args.positionals[0], args.values.config)
+  if (!args.values["dry-run"]) {
+    preflight()
+  }
   if (args.values.diff) {
     run(diffCommand(target), { inherit: true })
     return

@@ -1,0 +1,97 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "boxship configuration",
+  "type": "object",
+  "required": ["targets"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "targets": {
+      "type": "object",
+      "description": "Named deployment targets, e.g. production or staging",
+      "minProperties": 1,
+      "additionalProperties": {
+        "$ref": "#/definitions/target"
+      }
+    }
+  },
+  "definitions": {
+    "target": {
+      "type": "object",
+      "required": ["strategy", "username", "host", "location"],
+      "additionalProperties": false,
+      "properties": {
+        "strategy": {
+          "description": "Deployment strategy",
+          "enum": ["Static", "MyDevilNet"]
+        },
+        "username": {
+          "type": "string",
+          "description": "SSH username on the server"
+        },
+        "host": {
+          "type": "string",
+          "description": "Server hostname"
+        },
+        "port": {
+          "type": "integer",
+          "description": "SSH port (defaults to 22)"
+        },
+        "location": {
+          "type": "string",
+          "description": "Destination directory on the server, created if missing"
+        },
+        "source": {
+          "type": "string",
+          "description": "Local directory to deploy (defaults to ./); a trailing slash syncs the directory contents"
+        },
+        "domain": {
+          "type": "string",
+          "description": "Domain restarted after deploy (required by the MyDevilNet strategy)"
+        },
+        "npm": {
+          "type": "string",
+          "description": "npm binary used for the server-side install (defaults to npm)"
+        },
+        "url": {
+          "type": "string",
+          "pattern": "^https?://",
+          "description": "URL checked after deploy to verify the site responds"
+        },
+        "exclude": {
+          "description": "Additional paths to skip, on top of the defaults; excluded paths are neither uploaded nor deleted",
+          "oneOf": [
+            { "type": "string" },
+            { "type": "array", "items": { "type": "string" } }
+          ]
+        },
+        "before": {
+          "description": "Command(s) run on the server in the target location before the files are synced",
+          "oneOf": [
+            { "type": "string" },
+            { "type": "array", "items": { "type": "string" } }
+          ]
+        },
+        "after": {
+          "description": "Command(s) run on the server in the target location after the deploy",
+          "oneOf": [
+            { "type": "string" },
+            { "type": "array", "items": { "type": "string" } }
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "strategy": { "const": "MyDevilNet" } }
+          },
+          "then": {
+            "required": ["domain"]
+          }
+        }
+      ]
+    }
+  }
+}
