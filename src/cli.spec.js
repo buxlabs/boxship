@@ -8,7 +8,7 @@ const { CONFIG_FILENAME } = require("./boxship")
 
 const BIN = path.join(__dirname, "..", "bin", "boxship.js")
 
-const DEFAULT_EXCLUDE_FLAGS = `--exclude='.git' --exclude='.env' --exclude='.vscode' --exclude='.idea' --exclude='.DS_Store' --exclude='node_modules' --exclude='test' --exclude='coverage' --exclude='boxship.config.json' --exclude='.rsync-partial'`
+const DEFAULT_EXCLUDE_FLAGS = `--exclude='.git' --exclude='.env' --exclude='.vscode' --exclude='.idea' --exclude='.DS_Store' --exclude='.claude' --exclude='node_modules' --exclude='test' --exclude='temp' --exclude='tmp' --exclude='coverage' --exclude='boxship.config.json' --exclude='.rsync-partial'`
 
 function run(args, config, env) {
   const cwd = fs.mkdtempSync(path.join(os.tmpdir(), "boxship-cli-"))

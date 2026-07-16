@@ -18,7 +18,7 @@ const {
   missingEnvLines,
 } = require("./boxship")
 
-const DEFAULT_EXCLUDE_FLAGS = `--exclude='.git' --exclude='.env' --exclude='.vscode' --exclude='.idea' --exclude='.DS_Store' --exclude='node_modules' --exclude='test' --exclude='coverage' --exclude='boxship.config.json' --exclude='.rsync-partial'`
+const DEFAULT_EXCLUDE_FLAGS = `--exclude='.git' --exclude='.env' --exclude='.vscode' --exclude='.idea' --exclude='.DS_Store' --exclude='.claude' --exclude='node_modules' --exclude='test' --exclude='temp' --exclude='tmp' --exclude='coverage' --exclude='boxship.config.json' --exclude='.rsync-partial'`
 
 test("Static returns mkdir and rsync commands", () => {
   const commands = strategies.Static({
@@ -76,11 +76,11 @@ test("Static appends multiple excludes given as a string", () => {
     username: "user",
     host: "example.com",
     location: "~/public",
-    exclude: "uploads,tmp",
+    exclude: "uploads,cache",
   })
   assert.strictEqual(
     commands[1],
-    `rsync -avz --partial-dir=.rsync-partial --delete -e ssh ${DEFAULT_EXCLUDE_FLAGS} --exclude='uploads' --exclude='tmp' ./ user@example.com:~/public`
+    `rsync -avz --partial-dir=.rsync-partial --delete -e ssh ${DEFAULT_EXCLUDE_FLAGS} --exclude='uploads' --exclude='cache' ./ user@example.com:~/public`
   )
 })
 
@@ -89,11 +89,11 @@ test("Static appends multiple excludes given as an array", () => {
     username: "user",
     host: "example.com",
     location: "~/public",
-    exclude: ["uploads", "tmp"],
+    exclude: ["uploads", "cache"],
   })
   assert.strictEqual(
     commands[1],
-    `rsync -avz --partial-dir=.rsync-partial --delete -e ssh ${DEFAULT_EXCLUDE_FLAGS} --exclude='uploads' --exclude='tmp' ./ user@example.com:~/public`
+    `rsync -avz --partial-dir=.rsync-partial --delete -e ssh ${DEFAULT_EXCLUDE_FLAGS} --exclude='uploads' --exclude='cache' ./ user@example.com:~/public`
   )
 })
 

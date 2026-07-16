@@ -97,7 +97,7 @@ Deploys are incremental: files are synced with `rsync --delete`, so only changed
 
 These paths are always excluded, in addition to anything in `exclude`:
 
-`.git`, `.env`, `.vscode`, `.idea`, `.DS_Store`, `node_modules`, `test`, `coverage`, `boxship.config.json`
+`.git`, `.env`, `.vscode`, `.idea`, `.DS_Store`, `.claude`, `node_modules`, `test`, `temp`, `tmp`, `coverage`, `boxship.config.json`
 
 Excludes match exact names, so `.env` stays local (and the server's copy is preserved) while `.env.example` still gets deployed.
 
