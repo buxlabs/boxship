@@ -1,6 +1,6 @@
 {
   "name": "boxship",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "Config-driven deployment CLI that ships projects over rsync/ssh",
   "main": "src/boxship.js",
   "bin": "./bin/boxship.js",
